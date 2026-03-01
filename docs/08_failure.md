@@ -619,7 +619,6 @@ behaves just like a `<decides>` function call and similarly uses bracket
 syntax. For example `Type[value]` attempts to cast `value`'s type to `Type` and
 fails if unsuccessful.
 
-<!-- TODO: link to chapter 10?  -->
 This is also works with user defined types which must specify `<castable>`:
 
 <!--versetest

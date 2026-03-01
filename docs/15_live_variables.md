@@ -302,7 +302,8 @@ set X = 1  # Error! Cyclic evaluation
 
 ### Tracking Dependencies
 
-Live variables track dependencies dynamically at runtime, not statically from source code. A variable becomes a dependency only when it's actually read during evaluation, not merely when it appears in the guard expression:
+Live variables track dependencies dynamically at runtime, not statically from source code. 
+A variable becomes a dependency only when it's actually read during evaluation, not merely when it appears in the guard expression:
 
 1. *Runtime tracking:* Dependencies are determined by which variables are actually accessed during each evaluation
 2. *Transitive tracking:* Dependencies include variables read in called functions
@@ -724,9 +725,11 @@ modifier_stack(t:type) := class:
    Evaluate<final>(Value:t)<reads> : t
 ```
 
-The `AddModifier` method returns a `cancelable` which can be used to remove the inserted modifier. Removing a modifier triggers recalculation of any live variable associated with this stack.
+The `AddModifier` method returns a `cancelable` which can be used to remove the inserted modifier.
+Removing a modifier triggers recalculation of any live variable associated with this stack.
 
-For example, consider the following which creates a live variable `Health` filtered through a modifier stack containing a magic potion modifier that doubles the input value:
+For example, consider the following which creates a live variable `Health` filtered through a
+modifier stack containing a magic potion modifier that doubles the input value:
 
 <!--NoCompile-->
 <!-- 23-->

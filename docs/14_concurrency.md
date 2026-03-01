@@ -77,15 +77,7 @@ Concurrent operations require the `<suspends>` effect specifier (see
 concurrency expressions, call other suspending functions, and
 cooperatively yield execution:
 
-<!--versetest
-MyAsyncFunction()<suspends>:void =
-    Sleep(1.0)
-    Print("One second later!")
-
-MyImmediateFunction():void =
-    Print("This happens immediately")
-<#
--->
+<!--versetest-->
 <!-- 01 -->
 ```verse
 # Function marked with suspends can use async expressions
@@ -98,7 +90,6 @@ MyImmediateFunction():void =
     # Sleep(1.0)  # ERROR: Cannot use Sleep without suspends
     Print("This happens immediately")
 ```
-<!-- #> -->
 
 The `<suspends>` effect propagates through the call chain—any function
 calling a suspending function must itself be marked `<suspends>`.
@@ -260,14 +251,15 @@ response.
 SlowOperation()<suspends>:int=0
 FastOperation()<suspends>   :int=0
 MediumOperation()<suspends>   :int=0
-F()<suspends>:void={
-Winner := race:
-    SlowOperation()
-    FastOperation()
-    MediumOperation()
 
-Print("Winner result: {Winner}")
-}
+TestRace()<suspends>:void =
+    # First to complete wins, others are canceled
+    Winner := race:
+        SlowOperation()     # Takes 5 seconds
+        FastOperation()     # Takes 1 second - wins!
+        MediumOperation()   # Takes 3 seconds
+
+    Print("Winner result: {Winner}")  # Prints FastOperation's result 
 <#
 -->
 <!-- 06 -->
@@ -1866,7 +1858,14 @@ MyEvent.Signal(100)
 
 Similarly, `Cancel()` operations are transactional. If you cancel a subscription within a transaction that later fails, the subscription remains active:
 
-<!--NoCompile-->
+<!--versetest
+subscription := class:
+    Cancel()<transacts>:void = {}
+
+subscribable_event(t:type) := class:
+    Subscribe(Handler:t->void)<transacts>:subscription = subscription{}
+    Signal(Value:t)<transacts>:void = {}
+-->
 <!-- 67 -->
 ```verse
 Handler(:int):void={}
@@ -1933,7 +1932,20 @@ RequestPath(Start:int, Goal:int)<suspends>:int =
 
 **State Broadcasting:** Use sticky events for state that multiple systems need to observe:
 
-<!--NoCompile-->
+<!--versetest
+game_phase := enum{Menu, Playing, Paused, GameOver}
+UIUpdate(P:game_phase)<transacts>:void={}
+AIUpdate(P:game_phase)<transacts>:void={}
+AudioUpdate(P:game_phase)<transacts>:void={}
+
+sticky_event(t:type) := class:
+    var CurrentValue:?t = false
+    Signal(Value:t)<transacts>:void = set CurrentValue = option{Value}
+    Await()<suspends><transacts>:t =
+        loop:
+            if (V := CurrentValue?):
+                return V
+-->
 <!-- 69 -->
 ```verse
 PhaseChange := sticky_event(game_phase){}
@@ -1958,7 +1970,14 @@ AudioSystem()<suspends>:void =
 **Multi-System Notifications:** Use subscribable events when many
 systems need to react to the same events:
 
-<!--NoCompile-->
+<!--versetest
+subscription := class:
+    Cancel()<transacts>:void = {}
+
+subscribable_event(t:type) := class:
+    Subscribe(Handler:t->void)<transacts>:subscription = subscription{}
+    Signal(Value:t)<transacts>:void = {}
+-->
 <!-- 70 -->
 ```verse
 UpdateInventoryUI(:int):void={}

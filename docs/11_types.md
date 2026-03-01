@@ -1380,18 +1380,18 @@ frequently-used type combinations.
 A type alias is created using simple assignment syntax at module scope:
 
 <!--versetest
-M := module:
-    entity:=struct{}
+# At module scope
+entity:=struct{}
 
-    # Simple type aliases
-    coordinate := tuple(float, float, float)
-    entity_map := [string]entity
-    player_id := int
+# Simple type aliases
+coordinate := tuple(float, float, float)
+entity_map := [string]entity
+player_id := int
 
-    # Function type aliases
-    update_handler := type{_(:float):void}
-    validator := int -> logic
-    transformer := type{_(:string):int}
+# Function type aliases
+update_handler := type{_(:float):void}
+validator := int -> logic
+transformer := type{_(:string):int}
 <#
 -->
 <!-- 91 -->
@@ -1409,7 +1409,7 @@ update_handler := type{_(:float):void}
 validator := int -> logic
 transformer := type{_(:string):int}
 ```
-<!-- #>-->
+<!-- #> -->
 
 Type aliases are compile-time only - they create no runtime overhead
 and are purely for programmer convenience and code clarity.
@@ -1444,8 +1444,13 @@ ProcessGame(PID)        # OK - player_id is also int
 Type aliases can have access specifiers that control their visibility across modules:
 
 <!--versetest
+# Public alias - accessible from other modules
 PublicAlias<public> := int
+
+# Internal alias - only accessible within defining module
 InternalAlias<internal> := string
+
+# Note: Protected/private are for classes and interfaces, not type aliases at module scope
 <#
 -->
 <!-- 93 -->
@@ -1464,10 +1469,8 @@ ProtectedAlias<protected> := float  # only in classes and interfaces
 **Type aliases cannot be more public than the types they alias:**
 
 <!--versetest
-# At module scope - type aliases with access specifiers are allowed here
 private_class := class{}
 
-# VALID: Same or less visibility
 InternalToInternal<internal> := private_class
 InternalAlias := private_class  # Defaults to internal
 

@@ -942,12 +942,15 @@ ShowGreeting(Name:string):void =
 - Only parameter names and Unicode code points allowed in braces
 
 <!--versetest
+# Multiple parameters, some repeated
 ScoreMessage<localizes>(Player:string, Score:int) : message =
     "Congratulations {Player}! Your score is {Score}. Great job, {Player}!"
 
+# Outputs: "Congratulations Alice! Your score is 1,500. Great job, Alice!"
 
+# Not all parameters required in message text
 OptionalParam<localizes>(Name:string, Score:int) : message =
-    "Thanks for playing!"
+    "Thanks for playing!"  # Score parameter ignored
 <#
 -->
 <!-- 24 -->
@@ -988,14 +991,24 @@ Localized messages support named parameters and default values:
 <!--versetest
 ConfigMessage<localizes>(?MaxPlayers:int = 8, ?TimeLimit:int = 300):message =
     "Game settings: {MaxPlayers} players, {TimeLimit} seconds"
+
+assert:
+    Localize(ConfigMessage())                           # Uses defaults
+    Localize(ConfigMessage(?MaxPlayers := 16))          # Override one
+    Localize(ConfigMessage(?TimeLimit := 600, ?MaxPlayers := 32))  # Override both
+<#
 -->
 <!-- 26 -->
 ```verse
+ConfigMessage<localizes>(?MaxPlayers:int = 8, ?TimeLimit:int = 300):message =
+    "Game settings: {MaxPlayers} players, {TimeLimit} seconds"
+
 # Can be called with any combination
 Localize(ConfigMessage())                           # Uses defaults
 Localize(ConfigMessage(?MaxPlayers := 16))          # Override one
 Localize(ConfigMessage(?TimeLimit := 600, ?MaxPlayers := 32))  # Override both
 ```
+<!-- #> --> 
 
 #### Tuple Parameters
 
