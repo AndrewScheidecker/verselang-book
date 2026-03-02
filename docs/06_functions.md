@@ -2403,10 +2403,14 @@ F2<public>(X:int)<computes>:int = X + 1
 ```
 
 Because it has the `<computes>` effect specifier, it does not have the
-`<reads>` effect. Without the `<reads>` effect, this function promises to
-always return the same result for some given parameters. Changing it to return,
-for example, `X + 2` would break that promise, and so must be rejected by the
-compiler as backward incompatible.
+`<reads>` effect. Within a given version, this guarantees referential
+transparency: the function will always return the same result for the
+same arguments. Across versions, this creates a stronger constraint:
+since the compiler cannot verify that a modified body preserves the
+same input-output mapping for all possible arguments, it
+conservatively forbids any body changes. Thus, changing the body to
+return `X + 2` in a future version would be rejected as backward
+incompatible.
 
 Functions such as `F1` and `F2` are sometimes called *opaque* as the return
 type abstracts the function's body. Future version of Verse will support

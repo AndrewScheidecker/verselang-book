@@ -199,7 +199,7 @@ For **non-final instance methods**:
 **Function body:**
 
 - **Cannot change the body of transparent functions.** Verification of callers might depend on the function body of transparent functions, so changes could break callers.
-- **Cannot change the body of opaque functions without the `<reads>` effect.** This is to ensure that `NonReadsFunction()=NonReadsFunction()` even when code is evolving.
+- **Cannot change the body of opaque functions without the `<reads>` effect.** A function without `<reads>` guarantees referential transparency — the same inputs always produce the same outputs. Although the body is not visible to callers, the compiler cannot verify that a modified body preserves this mapping for all inputs, so it conservatively forbids body changes to ensure that `NonReadsFunction() = NonReadsFunction()` holds across versions.
 - **Can change the body of opaque functions that have the `<reads>` effect.** Code evolution can be observed by the `<reads>` effect.
 
 **Understanding Variance:**
