@@ -2066,6 +2066,61 @@ InstanceFamily := GetCastableFinalSuperClass[component, rigid_body{}]
 
 This is useful when working with type values directly rather than instances.
 
+### castable_concrete_subtype
+
+The `castable_concrete_subtype(t)` type constructor combines the requirements of both `castable_subtype` and `concrete_subtype`, representing types that are:
+- Subtypes of `t`
+- Marked with `<castable>` (enabling runtime type queries)
+- Marked with `<concrete>` (enabling instantiation)
+
+This is useful when you need to ensure that type parameters are both castable and concrete:
+
+<!--versetest
+entity := class{}
+
+component := class<abstract>:
+    Owner:entity
+
+physics_component := class<castable><concrete>(component):
+    Velocity:float = 0.0
+
+assert:
+    # Must be both castable (for type queries) and concrete (for instantiation)
+    CreateAndCast(CompType:castable_concrete_subtype(component)):component =
+        # Can instantiate because it's concrete
+        Instance := CompType{}
+        # Can cast because it's castable
+        if (Specific := CompType[Instance]):
+            Specific
+        else:
+            Instance
+<#
+-->
+<!-- 138 -->
+```verse
+entity := class{}
+
+component := class<abstract>:
+    Owner:entity
+
+physics_component := class<castable><concrete>(component):
+    Velocity:float = 0.0
+
+# Function that requires both <castable> and <concrete>
+CreateAndCast(CompType:castable_concrete_subtype(component)):component =
+    # Can instantiate because CompType is <concrete>
+    Instance := CompType{}
+    # Can cast because CompType is <castable>
+    if (Specific := CompType[Instance]):
+        Specific
+    else:
+        Instance
+```
+<!-- ERROR:
+Line 23: Script Error 3100: vErr:S04: Block comment beginning at "<#" never ends
+-->
+#>
+
 ### classifiable_subset
 
 Building on the concept of runtime type queries introduced by

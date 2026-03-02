@@ -139,11 +139,13 @@ G():void =
 
 Tuples also play a role in structured concurrency. The `sync` expression produces a tuple of results, allowing several computations that unfold over time to be evaluated simultaneously. In this way, tuples provide not only a convenient grouping mechanism but also a foundation for composing concurrent computations.
 
+Tuples can also be automatically converted to arrays when used with array concatenation operators `+` and `+=`. See [Tuples with Array Operators](#tuples-with-array-operators) for more details.
+
 ## Arrays
 
 An array is an immutable container that holds zero or more values of the same type `t`. The elements of an array are ordered, and each can be accessed by a zero-based index. Arrays are written with square brackets in their type, for example `[]int` or `[]float`, and are created with the `array{...}` literal form. For instance, `A : []int = array{}` creates an empty array, while `B : []int = array{1, 2, 3}` creates an array of three integers. Accessing elements by index is a failable operation: `B[0]` succeeds with the value `1`, while `B[10]` fails because the index is out of bounds.
 
-Arrays can be concatenated with the `+` operator, and when declared as `var` they can be extended with the shorthand operator `+=`. For example, `var C:[]int= B + array{4}` gives `C` the value `array{1,2,3,4}`, and `set C += array{5}` updates it to `array{1,2,3,4,5}`. The length of an array is available through the `.Length` member, so `C.Length` here would be `5`. Elements are always stored in the order they are inserted, and indexing starts at `0`. Thus `array{10,20,30}[0]` is `10`, and the last valid index of any array is always one less than its length.
+Arrays can be concatenated with the `+` operator, and when declared as `var` they can be extended with the shorthand operator `+=`. For example, `var C:[]int= B + array{4}` gives `C` the value `array{1,2,3,4}`, and `set C += array{5}` updates it to `array{1,2,3,4,5}`. Tuples can also be used directly with these operators, and will be automatically converted to arrays. The length of an array is available through the `.Length` member, so `C.Length` here would be `5`. Elements are always stored in the order they are inserted, and indexing starts at `0`. Thus `array{10,20,30}[0]` is `10`, and the last valid index of any array is always one less than its length.
 
 Although arrays themselves are immutable, variables declared with `var` can be reassigned to new arrays, or can appear to have their elements changed. For example, `var D:[]int = array{1,2,3}` allows the update `set D[0] = 3`, after which `D` will hold `array{3,2,3}`. What actually happens is that a brand new array is created under the hood, with the specified element updated. In effect, `set D[0] = 3` is compiled into `set D = array{3,D[1],D[2]}`. The old array continues to exist if another variable was referencing it, which means that if `A` and `B` both start as `array{1}` and we update `A[0]`, then `A` and `B` will diverge: `A[0]` is now `2` while `B[0]` is still `1`.
 
@@ -178,6 +180,24 @@ if (set Array2[1] = 77) {}
 ```
 
 After this code runs, iterating through `Array2` prints `10, 77, 12, 20, 21, 22, 30, 31`.
+
+Tuples can be used directly with the `+` and `+=` operators on arrays, and will be automatically converted to arrays. This provides a concise way to add multiple elements without wrapping them in `array{...}`:
+
+<!--versetest-->
+<!-- 77 -->
+```verse
+var Numbers:[]int = array{1, 2, 3}
+
+# Concatenate using a tuple - automatically converted to array
+set Numbers = Numbers + (4, 5, 6)
+
+# Shorthand form also works with tuples
+set Numbers += (7, 8, 9)
+
+# Result: array{1, 2, 3, 4, 5, 6, 7, 8, 9}
+```
+
+This tuple-to-array conversion with operators is distinct from tuple expansion in function calls. With operators, the tuple elements are added to the array as individual items, just as if you had written `array{4, 5, 6}`.
 
 Arrays can also be nested to form multi-dimensional structures, similar to rows and columns of a table. For example, the following creates a two-dimensional 4×3 array of integers:
 

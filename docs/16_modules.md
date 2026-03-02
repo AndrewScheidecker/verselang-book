@@ -656,6 +656,12 @@ The qualified access expression `(module:)identifier` is particularly useful in 
 
 Variables defined at module scope are global to any game instance where the variable is in scope.
 
+Restrictions on module-scoped definitions:
+
+- Direct `var` declarations of simple types (like `var X:int = 0`) are not allowed at module scope
+- Instances of `<unique>` classes with `<allocates>` can be created at module scope, as long as their construction doesn't actually allocate mutable memory
+- For persistent mutable state, use `weak_map` with appropriate key types (see below)
+
 Use `weak_map(session, t)` for variables that persist for the duration of a game session:
 
 <!--versetest

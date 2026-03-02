@@ -131,7 +131,7 @@ error (cannot have two exclusive effects).
 |              | `<computes>`   | Heap        | `{}`             | *Exclusive; Pure computation* |
 | **suspends** | `<suspends>`   | Suspension  | `{suspends}`     | *Cannot combine with `<decides>`* |
 | **diverges** |                | Divergence  | `{diverges}`     | *No specifier; May run forever* |
-|              | `<converges>`  | Divergence  | `{}`             | *Exclusive; Native functions only* |
+|              | `<converges>`  | Divergence  | `{}`             | *Exclusive; Native functions, abstract methods, type signatures* |
 | **dictates** |                | Prediction  | `{dictates}`     | *No specifier; Server Authority* |
 |              | `<predicts>`   | Prediction  | `{}`             | *Allows Client Prediction* |
 | **no_rollback** |             | Internal    | `{no_rollback}`  | *To be deprecated; Transactions disallowed* |
@@ -139,7 +139,7 @@ error (cannot have two exclusive effects).
 The following restrictions are in effect:
 
 - `<suspends>` and `<decides>` cannot be combined on the same function,
-- `<converges>` is only allowed on `<native>` functions,
+- `<converges>` is only allowed on `<native>` functions, abstract methods, and type signatures,
 - duplicate specifiers (e.g., `<computes><computes>`) are errors.
 
 ## How Effects Compose
@@ -452,9 +452,16 @@ authoritative state.
 
 Currently in planning, the divergence family will track whether
 functions are guaranteed to terminate. The `<converges>` specifier
-will mark functions that provably complete in finite time, while
+marks functions that provably complete in finite time, while
 functions without it might run forever. This is particularly important
 for constructors and initialization code.
+
+The `<converges>` specifier can be used on:
+- `<native>` functions that are guaranteed to terminate
+- Abstract method signatures in classes and interfaces
+- Function signatures in type expressions
+
+Regular function implementations cannot use `<converges>` — only their declarations in abstract contexts or as native functions.
 
 
 <!-- TODO: write more -->
@@ -787,18 +794,20 @@ monster := class<unique><allocates>:
     var Health:float = 100.0
 ```
 
-Classes and structs **cannot** be marked with `<suspends>` or `<decides>`:
+Classes, interfaces, and structs **cannot** be marked with `<suspends>` or `<decides>`:
 
 <!--versetest-->
 <!-- 29 -->
 ```verse
-# Valid effect specifiers for classes/structs:
+# Valid effect specifiers for classes/interfaces/structs:
 valid_class := class<computes>{}
+valid_interface := interface<computes>{}
 valid_struct := struct<transacts>{}
 
 # Invalid: async and failable effects not allowed
-# invalid_class := class<suspends>{}   # ERROR
-# invalid_struct := struct<decides>{}  # ERROR
+# invalid_class := class<suspends>{}      # ERROR
+# invalid_interface := interface<decides>{}  # ERROR
+# invalid_struct := struct<decides>{}     # ERROR
 ```
 
 This restriction exists because constructors must complete
@@ -841,6 +850,41 @@ boundaries. Data transfer objects can be kept pure with `<computes>`,
 ensuring they're just data carriers. Game entities might require
 `<allocates>` for unique identity, while service objects might need
 full `<transacts>` to initialize their state.
+
+### Interface Construction Effect Constraints
+
+When classes or interfaces inherit from interfaces with construction effects, they must declare at least the same construction effects:
+
+<!--versetest-->
+<!-- 31 -->
+```verse
+# Interface with transacts effect
+transacting_interface := interface<transacts>{}
+
+# Valid: class has at least transacts
+valid_class := class<transacts>(transacting_interface){}
+
+# Invalid: class has less effects than interface requires
+# invalid_class := class<computes>(transacting_interface){}  # ERROR
+```
+
+Interface field initializers must also respect the interface's declared construction effects:
+
+<!--versetest-->
+<!-- 32 -->
+```verse
+transacting_class := class<transacts>{}
+
+# Valid: interface has transacts, field initializer has transacts
+valid_interface := interface<transacts>:
+    Instance:transacting_class = transacting_class{}
+
+# Invalid: interface has computes, but field initializer has transacts
+# invalid_interface := interface<computes>:
+#     Instance:transacting_class = transacting_class{}  # ERROR
+```
+
+These constraints ensure that construction effects flow correctly through inheritance hierarchies. A class inheriting an interface must be able to construct all interface fields, which requires having at least the same construction effects.
 
 ## Working with Effects
 

@@ -117,6 +117,11 @@ set Score *= 2     # Score is now 250
 var Health:float = 100.0
 set Health /= 2.0  # Health is now 50.0
 
+# Arrays can use += with both arrays and tuples
+var Items:[]int = array{1, 2, 3}
+set Items += array{4, 5}  # Items is now array{1, 2, 3, 4, 5}
+set Items += (6, 7)       # Items is now array{1, 2, 3, 4, 5, 6, 7}
+
 # Note: set /= doesn't work with integers due to failable division
 # var IntValue:int = 10
 # set IntValue /= 2  # Compile error!

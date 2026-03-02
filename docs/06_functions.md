@@ -1433,8 +1433,8 @@ IntToString:[int]string = map{1 => "one"}
 Result1 := Identity(IntToString)  # Result1: [int]string
 
 # Arrays maintain element types
-Numbers:[]int = array{1, 2, 3}
-Result2 := Identity(Numbers)  # Result2: []int
+IntArray:[]int = array{1, 2, 3}
+Result2 := Identity(IntArray)  # Result2: []int
 
 # Even nested containers preserve structure
 NestedMap:[int][]string = map{1 => array{"a", "b"}}
