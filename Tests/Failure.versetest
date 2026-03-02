@@ -81,3 +81,12 @@ assert_valid:
     F():void =
         T:?tuple(int, float) = option{(1, 2.3)}
         if (T?(0)) {}
+
+TransactsFunc()<transacts><decides>:void = {}
+
+# Test nested failure contexts / transactions going through `EnterVM` via a native `FDecidesContext::Transact` call
+assert:
+    if:
+        TestUtils.InvokeTransactsNested[TransactsFunc]
+        TestUtils.InvokeTransactsNested[TransactsFunc]
+        true=false

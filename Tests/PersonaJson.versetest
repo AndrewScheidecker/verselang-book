@@ -11,7 +11,7 @@ Class := module:
         X<public>:logic = false
 
 assert:
-    LogCheck(ToJson[Class.class1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Class/class1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[]\}")
+    LogCheck(ToJson[Class.class1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Class/class1\",\"properties\":\{\"(/Verse.org/VerseTests/Class/class1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Class/class1:)X\":false\}", Class.class1]
@@ -34,7 +34,7 @@ NestedClass := module:
         Y<public>:Class.class1 = Class.class1{}
 
 assert:
-    LogCheck(ToJson[NestedClass.class1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/NestedClass/class1:)Y\":\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Class/class1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[]\}\},\"required\":[]\}")
+    LogCheck(ToJson[NestedClass.class1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/NestedClass/class1\",\"properties\":\{\"(/Verse.org/VerseTests/NestedClass/class1:)Y\":\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Class/class1\",\"properties\":\{\"(/Verse.org/VerseTests/Class/class1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[]\}\},\"required\":[]\}")
 
 assert:
     not FromJson["\{\"(/Verse.org/VerseTests/NestedClass/class1:)Y\":false\}", NestedClass.class1]
@@ -48,7 +48,7 @@ Struct := module:
         X<public>:logic
 
 assert:
-    LogCheck(ToJson[Struct.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Struct/struct1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[\"(/Verse.org/VerseTests/Struct/struct1:)X\"]\}")
+    LogCheck(ToJson[Struct.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Struct/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Struct/struct1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[\"(/Verse.org/VerseTests/Struct/struct1:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Struct/struct1:)X\":true\}", Struct.struct1]
@@ -59,7 +59,7 @@ NestedStruct := module:
         Y<public>:Struct.struct1
 
 assert:
-    LogCheck(ToJson[NestedStruct.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/NestedStruct/struct1:)Y\":\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Struct/struct1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[\"(/Verse.org/VerseTests/Struct/struct1:)X\"]\}\},\"required\":[\"(/Verse.org/VerseTests/NestedStruct/struct1:)Y\"]\}")
+    LogCheck(ToJson[NestedStruct.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/NestedStruct/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/NestedStruct/struct1:)Y\":\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Struct/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Struct/struct1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[\"(/Verse.org/VerseTests/Struct/struct1:)X\"]\}\},\"required\":[\"(/Verse.org/VerseTests/NestedStruct/struct1:)Y\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/NestedStruct/struct1:)Y\":\{\"(/Verse.org/VerseTests/Struct/struct1:)X\":true\}\}", NestedStruct.struct1]
@@ -75,7 +75,7 @@ Enum := module:
         X<public>:enum1
 
 assert:
-    LogCheck(ToJson[Enum.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Enum/struct1:)X\":\{\"ENUM\":[\"A\",\"B\",\"C\"]\}\},\"required\":[\"(/Verse.org/VerseTests/Enum/struct1:)X\"]\}")
+    LogCheck(ToJson[Enum.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Enum/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Enum/struct1:)X\":\{\"type\":\"STRING\",\"description\":\"/Verse.org/VerseTests/Enum/enum1\",\"enum\":[\"A\",\"B\",\"C\"]\}\},\"required\":[\"(/Verse.org/VerseTests/Enum/struct1:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Enum/struct1:)X\":\"A\"\}", Enum.struct1]
@@ -93,7 +93,7 @@ Char := module:
         X:char
 
 assert:
-    LogCheck(ToJson[Char.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Char/struct1:)X\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":255\}\},\"required\":[\"(/Verse.org/VerseTests/Char/struct1:)X\"]\}")
+    LogCheck(ToJson[Char.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Char/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Char/struct1:)X\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":255\}\},\"required\":[\"(/Verse.org/VerseTests/Char/struct1:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Char/struct1:)X\":65\}", Char.struct1]
@@ -108,8 +108,8 @@ Option := module:
         X<public>:??int = option{option{2}}
 
 assert:
-    bp_vm_only{LogCheck(ToJson[Option.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct1:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct1:)X\"]\}")}
-    verse_vm_only{LogCheck(ToJson[Option.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct1:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\"\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct1:)X\"]\}")}
+    bp_vm_only{LogCheck(ToJson[Option.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Option/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct1:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct1:)X\"]\}")}
+    verse_vm_only{LogCheck(ToJson[Option.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Option/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct1:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\"\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct1:)X\"]\}")}
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Option/struct1:)X\":false\}", Option.struct1]
@@ -120,8 +120,8 @@ assert:
     X.X? = 1
 
 assert:
-    bp_vm_only{LogCheck(ToJson[Option.struct2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct2:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\}]\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct2:)X\"]\}")}
-    verse_vm_only{LogCheck(ToJson[Option.struct2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct2:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\"\}\}\}]\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct2:)X\"]\}")}
+    bp_vm_only{LogCheck(ToJson[Option.struct2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Option/struct2\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct2:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\}]\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct2:)X\"]\}")}
+    verse_vm_only{LogCheck(ToJson[Option.struct2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Option/struct2\",\"properties\":\{\"(/Verse.org/VerseTests/Option/struct2:)X\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"any_of\":[\{\"type\":\"BOOLEAN\"\},\{\"type\":\"OBJECT\",\"properties\":\{\"\":\{\"type\":\"INTEGER\"\}\}\}]\}\}\}]\}\},\"required\":[\"(/Verse.org/VerseTests/Option/struct2:)X\"]\}")}
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Option/struct2:)X\":\{\"\":false\}\}", Option.struct2]
@@ -143,8 +143,8 @@ Map := module:
         X<public>:[int]float
 
 assert:
-    bp_vm_only{LogCheck(ToJson[Map.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Map/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"OBJECT\",\"properties\":\{\"key\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\},\"value\":\{\"type\":\"NUMBER\"\}\},\"required\":[\"key\",\"value\"]\}\}\},\"required\":[\"(/Verse.org/VerseTests/Map/struct1:)X\"]\}")}
-    verse_vm_only{LogCheck(ToJson[Map.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Map/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"OBJECT\",\"properties\":\{\"key\":\{\"type\":\"INTEGER\"\},\"value\":\{\"type\":\"NUMBER\"\}\},\"required\":[\"key\",\"value\"]\}\}\},\"required\":[\"(/Verse.org/VerseTests/Map/struct1:)X\"]\}")}
+    bp_vm_only{LogCheck(ToJson[Map.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Map/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Map/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"OBJECT\",\"properties\":\{\"key\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\},\"value\":\{\"type\":\"NUMBER\"\}\},\"required\":[\"key\",\"value\"]\}\}\},\"required\":[\"(/Verse.org/VerseTests/Map/struct1:)X\"]\}")}
+    verse_vm_only{LogCheck(ToJson[Map.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Map/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Map/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"OBJECT\",\"properties\":\{\"key\":\{\"type\":\"INTEGER\"\},\"value\":\{\"type\":\"NUMBER\"\}\},\"required\":[\"key\",\"value\"]\}\}\},\"required\":[\"(/Verse.org/VerseTests/Map/struct1:)X\"]\}")}
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Map/struct1:)X\":[\{\"key\":1,\"value\":2\}]\}", Map.struct1]
@@ -157,8 +157,8 @@ Subclass := module:
         Y<public>:int = 1
 
 assert:
-    bp_vm_only{LogCheck(ToJson[Subclass.class2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Subclass/class2:)Y\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\},\"(/Verse.org/VerseTests/Subclass/class1:)X\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\},\"required\":[]\}")}
-    verse_vm_only{LogCheck(ToJson[Subclass.class2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Subclass/class2:)Y\":\{\"type\":\"INTEGER\"\},\"(/Verse.org/VerseTests/Subclass/class1:)X\":\{\"type\":\"INTEGER\"\}\},\"required\":[]\}")}
+    bp_vm_only{LogCheck(ToJson[Subclass.class2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Subclass/class2\",\"properties\":\{\"(/Verse.org/VerseTests/Subclass/class2:)Y\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\},\"(/Verse.org/VerseTests/Subclass/class1:)X\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\},\"required\":[]\}")}
+    verse_vm_only{LogCheck(ToJson[Subclass.class2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Subclass/class2\",\"properties\":\{\"(/Verse.org/VerseTests/Subclass/class2:)Y\":\{\"type\":\"INTEGER\"\},\"(/Verse.org/VerseTests/Subclass/class1:)X\":\{\"type\":\"INTEGER\"\}\},\"required\":[]\}")}
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Subclass/class1:)X\":1,\"(/Verse.org/VerseTests/Subclass/class2:)Y\":2\}", Subclass.class2]
@@ -173,8 +173,8 @@ CollidingSubclass := module:
     class2<public> := class<concrete>(class1, interface1) {}
 
 assert:
-    bp_vm_only{LogCheck(ToJson[CollidingSubclass.class2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/CollidingSubclass/class2:)X\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\},\"(/Verse.org/VerseTests/CollidingSubclass/class1:)X\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\},\"required\":[]\}")}
-    verse_vm_only{LogCheck(ToJson[CollidingSubclass.class2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/CollidingSubclass/class1:)X\":\{\"type\":\"INTEGER\"\},\"(/Verse.org/VerseTests/CollidingSubclass/interface1:)X\":\{\"type\":\"INTEGER\"\}\},\"required\":[]\}")}
+    bp_vm_only{LogCheck(ToJson[CollidingSubclass.class2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/CollidingSubclass/class2\",\"properties\":\{\"(/Verse.org/VerseTests/CollidingSubclass/class2:)X\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\},\"(/Verse.org/VerseTests/CollidingSubclass/class1:)X\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\},\"required\":[]\}")}
+    verse_vm_only{LogCheck(ToJson[CollidingSubclass.class2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/CollidingSubclass/class2\",\"properties\":\{\"(/Verse.org/VerseTests/CollidingSubclass/class1:)X\":\{\"type\":\"INTEGER\"\},\"(/Verse.org/VerseTests/CollidingSubclass/interface1:)X\":\{\"type\":\"INTEGER\"\}\},\"required\":[]\}")}
 
 assert:
     bp_vm_only{X := FromJson["\{\"(/Verse.org/VerseTests/CollidingSubclass/class1:)X\":1,\"(/Verse.org/VerseTests/CollidingSubclass/class2:)X\":2\}", CollidingSubclass.class2]}
@@ -201,7 +201,7 @@ ConstrainedInt := module:
         X<public>:int1 = 0
 
 assert:
-    LogCheck(ToJson[ConstrainedInt.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedInt/struct1:)X\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[\"(/Verse.org/VerseTests/ConstrainedInt/struct1:)X\"]\}")
+    LogCheck(ToJson[ConstrainedInt.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/ConstrainedInt/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedInt/struct1:)X\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[\"(/Verse.org/VerseTests/ConstrainedInt/struct1:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/ConstrainedInt/struct1:)X\":1\}", ConstrainedInt.struct1]
@@ -222,7 +222,7 @@ assert:
     not FromJson["\{\"(/Verse.org/VerseTests/ConstrainedInt/struct1:)X\":101\}", ConstrainedInt.struct1]
 
 assert:
-    LogCheck(ToJson[ConstrainedInt.struct2], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedInt/struct2:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\},\"1\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[\"0\",\"1\"]\}\},\"required\":[\"(/Verse.org/VerseTests/ConstrainedInt/struct2:)X\"]\}")
+    LogCheck(ToJson[ConstrainedInt.struct2], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/ConstrainedInt/struct2\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedInt/struct2:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\},\"1\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[\"0\",\"1\"]\}\},\"required\":[\"(/Verse.org/VerseTests/ConstrainedInt/struct2:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/ConstrainedInt/struct2:)X\":[1,2]\}", ConstrainedInt.struct2]
@@ -243,7 +243,7 @@ assert:
     not FromJson["\{\"(/Verse.org/VerseTests/ConstrainedInt/struct2:)X\":[101,101]\}", ConstrainedInt.struct2]
 
 assert:
-    LogCheck(ToJson[ConstrainedInt.class1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedInt/class1:)X\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[]\}")
+    LogCheck(ToJson[ConstrainedInt.class1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/ConstrainedInt/class1\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedInt/class1:)X\":\{\"type\":\"INTEGER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/ConstrainedInt/class1:)X\":1\}", ConstrainedInt.class1]
@@ -271,7 +271,7 @@ ConstrainedFloat := module:
         X<public>:float1 = 0.0
 
 assert:
-    LogCheck(ToJson[ConstrainedFloat.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedFloat/struct1:)X\":\{\"type\":\"NUMBER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[\"(/Verse.org/VerseTests/ConstrainedFloat/struct1:)X\"]\}")
+    LogCheck(ToJson[ConstrainedFloat.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/ConstrainedFloat/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedFloat/struct1:)X\":\{\"type\":\"NUMBER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[\"(/Verse.org/VerseTests/ConstrainedFloat/struct1:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/ConstrainedFloat/struct1:)X\":1\}", ConstrainedFloat.struct1]
@@ -292,7 +292,7 @@ assert:
     not FromJson["\{\"(/Verse.org/VerseTests/ConstrainedFloat/struct1:)X\":101\}", ConstrainedFloat.struct1]
 
 assert:
-    LogCheck(ToJson[ConstrainedFloat.class1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedFloat/class1:)X\":\{\"type\":\"NUMBER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[]\}")
+    LogCheck(ToJson[ConstrainedFloat.class1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/ConstrainedFloat/class1\",\"properties\":\{\"(/Verse.org/VerseTests/ConstrainedFloat/class1:)X\":\{\"type\":\"NUMBER\",\"minimum\":0,\"maximum\":100\}\},\"required\":[]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/ConstrainedFloat/class1:)X\":1\}", ConstrainedFloat.class1]
@@ -317,7 +317,7 @@ Tuple := module:
         X<public>:tuple(logic, logic)
 
 assert:
-    LogCheck(ToJson[Tuple.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Tuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"BOOLEAN\"\},\"1\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[\"0\",\"1\"]\}\},\"required\":[\"(/Verse.org/VerseTests/Tuple/struct1:)X\"]\}")
+    LogCheck(ToJson[Tuple.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Tuple/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Tuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"BOOLEAN\"\},\"1\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[\"0\",\"1\"]\}\},\"required\":[\"(/Verse.org/VerseTests/Tuple/struct1:)X\"]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Tuple/struct1:)X\":[true,false]\}", Tuple.struct1]
@@ -344,15 +344,15 @@ assert:
     not FromJson["\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":[1]\}", EmptyTuple.struct1]
 
 assert:
-    LogCheck(ToJson[EmptyTuple.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\},\"required\":[]\}\},\"required\":[\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\"]\}")
+    LogCheck(ToJson[EmptyTuple.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/EmptyTuple/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\},\"required\":[]\}\},\"required\":[\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\"]\}")
 
 Array := module:
     struct1<public> := struct:
         X<public>:[]int
 
 assert:
-    bp_vm_only{LogCheck(ToJson[Array.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}")}
-    verse_vm_only{LogCheck(ToJson[Array.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\"\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}")}
+    bp_vm_only{LogCheck(ToJson[Array.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Array/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}")}
+    verse_vm_only{LogCheck(ToJson[Array.struct1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Array/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\"\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}")}
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/Array/struct1:)X\":[]\}", Array.struct1]
@@ -410,8 +410,8 @@ assert:
 
 # Multiple optional types    
 assert:
-    bp_vm_only{LogCheck(ToJson[EmptyTuple.struct1, Array.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\},\"required\":[]\}\},\"required\":[\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\"]\},\"1\":\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}\}\}")}
-    verse_vm_only{LogCheck(ToJson[EmptyTuple.struct1, Array.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\},\"required\":[]\}\},\"required\":[\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\"]\},\"1\":\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\"\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}\}\}")}
+    bp_vm_only{LogCheck(ToJson[EmptyTuple.struct1, Array.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/EmptyTuple/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\},\"required\":[]\}\},\"required\":[\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\"]\},\"1\":\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Array/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\",\"minimum\":-9223372036854775808,\"maximum\":9223372036854775807\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}\}\}")}
+    verse_vm_only{LogCheck(ToJson[EmptyTuple.struct1, Array.struct1], "\{\"type\":\"OBJECT\",\"properties\":\{\"0\":\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/EmptyTuple/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":\{\"type\":\"OBJECT\",\"properties\":\{\},\"required\":[]\}\},\"required\":[\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\"]\},\"1\":\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/Array/struct1\",\"properties\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":\{\"type\":\"ARRAY\",\"items\":\{\"type\":\"INTEGER\"\}\}\},\"required\":[\"(/Verse.org/VerseTests/Array/struct1:)X\"]\}\}\}")}
 
 assert:
     X := FromJson["\{\"0\":\{\"(/Verse.org/VerseTests/EmptyTuple/struct1:)X\":[]\},\"1\":\{\"(/Verse.org/VerseTests/Array/struct1:)X\":[1,2]\}\}", (EmptyTuple.struct1, Array.struct1)]
@@ -543,7 +543,7 @@ InternalFunction := module:
         F<internal>():int = 1
 
 assert:
-    LogCheck(ToJson[InternalFunction.class1], "\{\"type\":\"OBJECT\",\"properties\":\{\"(/Verse.org/VerseTests/InternalFunction/class1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[]\}")
+    LogCheck(ToJson[InternalFunction.class1], "\{\"type\":\"OBJECT\",\"description\":\"/Verse.org/VerseTests/InternalFunction/class1\",\"properties\":\{\"(/Verse.org/VerseTests/InternalFunction/class1:)X\":\{\"type\":\"BOOLEAN\"\}\},\"required\":[]\}")
 
 assert:
     X := FromJson["\{\"(/Verse.org/VerseTests/InternalFunction/class1:)X\":true\}", InternalFunction.class1]

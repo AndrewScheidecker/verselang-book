@@ -1,0 +1,44 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+test_object := class<unique>:
+    Method():void={}
+
+my_struct := struct:
+    Object:test_object
+
+subobject_visitor := class:
+    var VisitedSubobjects:int = 0
+    OnSubobject(Subobject:any):void=
+        set VisitedSubobjects += 1
+
+CountSubobjects(Value:any):int=
+    Visitor := subobject_visitor{}
+    TestForEachSubobject(Value, Visitor.OnSubobject)
+    return Visitor.VisitedSubobjects
+
+assert{CountSubobjects(test_object{}) = 1}
+assert{CountSubobjects(MakeNull(test_object)) = 0}
+
+assert{CountSubobjects(test_object{}.Method) = 1}
+assert{CountSubobjects(MakeNullFunction()) = 0}
+
+assert{CountSubobjects(my_struct{Object:=test_object{}})=1}
+
+assert{CountSubobjects()=0}
+assert{CountSubobjects(test_object{}, test_object{})=2}
+
+assert{CountSubobjects(option{false?; test_object{}})=0}
+assert{CountSubobjects(option{test_object{}})=1}
+
+assert{CountSubobjects(array{})=0}
+assert{CountSubobjects(array{test_object{}, test_object{}})=2}
+
+assert{CountSubobjects(map{})=0}
+assert{CountSubobjects(map{0=>test_object{}, 1=>test_object{}})=2}
+assert{CountSubobjects(map{test_object{}=>0, test_object{}=>1})=2}
+assert{CountSubobjects(map{test_object{}=>test_object{}, test_object{}=>test_object{}})=4}
+}

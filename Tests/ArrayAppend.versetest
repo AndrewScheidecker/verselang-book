@@ -1,0 +1,92 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_only
+{
+assert:
+    var X:[]int = array{1,2,3}
+    set X += if (set X = array{0}; 0=0) { array{42} } else { array{42} }
+    X = array{0,42}
+
+assert:
+    var X:[][]int = array{array{1,2,3}}
+    set X[0] += if (set X = array{array{0}}; 0=0) { array{42} } else { array{42} }
+    X = array{array{0}}
+
+assert:
+    N := native_deeply_mutable{Array := array{1,2,3}}
+    set N.Array += if (set N.Array = array{0}; 0=0) { array{42} } else { array{42} }
+    verse_vm_only:
+        N.Array = array{0,42}
+
+assert:
+        N := native_deeply_mutable{ArrayArray := array{array{1,2,3}}}
+        set N.ArrayArray[0] += if (set N.ArrayArray = array{array{0}}; 0=0) { array{42} } else { array{42} }
+        # TODO (SOL-9022): This doesn't produce the same result as the non-native array. Either it should or we should runtime error.
+        # N.ArrayArray = array{array{0}}
+} # verse_vm_only
+
+assert:
+    N := native_deeply_mutable{Array := array{1,2,3}}
+    set N.Array +=  array{42}
+    N.Array = array{1,2,3,42}
+
+assert:
+    N := native_deeply_mutable{ArrayArray := array{array{1,2,3}}}
+    set N.ArrayArray[0] +=  array{42}
+    N.ArrayArray = array{array{1,2,3,42}}
+
+assert:
+    N := native_deeply_mutable{ArrayArray := array{array{1,2,3}}}
+    set N.ArrayArray += array{array{4,5,6}}
+    N.ArrayArray = array{array{1,2,3}, array{4,5,6}}
+
+
+verse_vm_only
+{
+
+assert:
+    var X:[]int = ()
+    live Y:int = X.Length
+    Y = 0
+    set X = X + (1, 2)
+    Y = 2
+
+assert:
+    var X:[]int = ()
+    live Y:int = X.Length
+    Y = 0
+    set X += (1, 2)
+    Y = 2
+
+assert:
+    var X:[]int = array{1}
+    live Y:int = X[X.Length - 1] or 1234
+    Y = 1
+    set X += (2, 3)
+    Y = 3
+
+assert:
+    var X:[]int = array{1}
+    live Y:int = X[X.Length - 1] or 1234
+    Y = 1
+    set X = X + (2, 3)
+    Y = 3
+
+box := class:
+    var Count:int = 0
+    var X:[]int = array{}
+
+WaitForChanges(Box:box)<suspends>:void =
+    when(Box.X):
+        set Box.Count += 1
+
+assert:
+    Box:box = box{}
+    spawn:
+        WaitForChanges(Box)
+    set Box.X += (2, 3)
+    Box.Count = 2
+
+} # verse_vm_only

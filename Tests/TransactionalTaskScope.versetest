@@ -2,7 +2,7 @@
 
 verse_vm_only {
 HelloWorld := module:
-    F<public>()<suspends>:void = {}
+    F<public>()<transacts><suspends>:void = {}
 
 assert:
     if:
@@ -14,7 +14,7 @@ int_ref := class:
     var Contents:int = 0
 
 Suspend := module:
-    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+    F<public>(X:int_ref, Y:int_ref)<transacts><suspends>:void =
         await:
             X.Contents
         set Y.Contents = 2

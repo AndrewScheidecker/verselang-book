@@ -1,0 +1,28 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Prior to 40.00, interface data members could be less accessible than the interface constructor.
+# In 40.00+, interface data members must not be less accessible than the interface constructor.
+
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i<public> := interface{Data<public>  :int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface{Data<public>  :int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface{Data<public>  :int = 0}}}}
+
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i<internal> := interface{Data<internal>:int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<internal> := interface{Data<internal>:int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<internal> := interface{Data<internal>:int = 0}}}}
+
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i<public> := interface<internal>{Data<internal>:int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface<internal>{Data<internal>:int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface<internal>{Data<internal>:int = 0}}}}
+
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i<public> := interface{Data<internal>:int}}}}
+assert_semantic_error(3593){vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface{Data<internal>:int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface{Data<internal>:int = 0}}}}
+
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i<internal> := interface{Data<private> :int}}}}
+assert_semantic_error(3593){vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<internal> := interface{Data<private> :int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<internal> := interface{Data<private> :int = 0}}}}
+
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i<public> := interface<internal>{Data<private> :int}}}}
+assert_semantic_error(3593){vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface<internal>{Data<private> :int}}}}
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i<public> := interface<internal>{Data<private> :int = 0}}}}

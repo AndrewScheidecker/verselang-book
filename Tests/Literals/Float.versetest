@@ -6,6 +6,37 @@ assert {1234f64}
 assert {12.34}
 assert {1234.0}
 
+# f64 suffix equivalence with unsuffixed literals
+assert{0.0f64 = 0.0}
+assert{1.0f64 = 1.0}
+assert{0.5f64 = 0.5}
+assert{0.001f64 = 0.001}
+assert{123.456f64 = 123.456}
+assert{1.0e10f64 = 1.0e10}
+assert{1.0e-10f64 = 1.0e-10}
+assert{1.0E10f64 = 1.0E10}
+assert{1e5f64 = 1e5}
+assert{-1.23f64 = -1.23}
+assert{-1.0e10f64 = -1.0e10}
+
+# Leading zeros after decimal point
+assert{0.001}
+assert{0.0001}
+assert{0.00001}
+assert{0.000001}
+
+# Trailing zeros
+assert{1.0 = 1.00}
+assert{1.0 = 1.000}
+assert{1.5 = 1.50}
+assert{1.5 = 1.500}
+assert{123.450 = 123.45}
+
+# Leading zeros before decimal point
+assert{00.5 = 0.5}
+assert{007.0 = 7.0}
+assert{0123.456 = 123.456}
+
 # f16 and f32 are valid but currently unsupported
 assert_semantic_error(3552){ f():float= 1.23f16 }
 assert_semantic_error(3552){ f():float= 1.23f32 }
@@ -13,6 +44,10 @@ assert_semantic_error(3552){ f():float= 1.23f32 }
 # invalid (missing bit depth suffix)
 assert_syntax_error(3109){"1234f"}
 assert_syntax_error(3109){"1234.0f"}
+
+# invalid (uppercase F suffix)
+assert_syntax_error(3101){"1.23F64"}
+assert_syntax_error(3101){"1234F64"}
 
 # invalid (unrecognized bit depths)
 assert_syntax_error(3109){"1234f1"}
@@ -29,6 +64,29 @@ assert_syntax_error(3101){"f():float= 12.34h"}
 
 assert_syntax_error(3100){"1."}
 
+# Shorthand decimal notation (missing leading zero)
+assert_syntax_error(3100){".5"}
+assert_syntax_error(3100){".123"}
+assert_syntax_error(3100){".0"}
+
+# Multiple decimal points
+assert_syntax_error(3100){"1.2.3"}
+
+# Test invalid exponent syntax
+assert_syntax_error(3101){"1.0e"}      # Missing exponent value
+assert_syntax_error(3101){"1.0e+"}     # Missing exponent value after sign
+assert_syntax_error(3101){"1.0e-"}     # Missing exponent value after sign
+assert_syntax_error(3101){"1.0E"}      # Missing exponent value (uppercase)
+assert_syntax_error(3101){"1.0E+"}     # Missing exponent value after sign (uppercase)
+assert_syntax_error(3101){"1.0E-"}     # Missing exponent value after sign (uppercase)
+
+# Double signs in exponent
+assert_syntax_error(3101){"1.0e++1"}
+assert_syntax_error(3101){"1.0e--1"}
+assert_syntax_error(3101){"1.0e+-1"}
+assert_syntax_error(3101){"1.0E++1"}
+assert_syntax_error(3101){"1.0E--1"}
+
 # Test exponents
 
 assert{1.0e+0 = 1.0}
@@ -42,10 +100,73 @@ assert{1.23e+1 = 12.3}
 
 assert{1.0e1 = 10.0} # The exponent sign can be omitted.
 
+# Test uppercase E in scientific notation
+assert{1.0E+0 = 1.0}
+assert{1.0E+1 = 10.0}
+assert{1.0E+2 = 100.0}
+assert{1.0E-1 = 0.1}
+assert{1.0E-2 = 0.01}
+assert{1.23E+0 = 1.23}
+assert{1.23E+1 = 12.3}
+assert{1.0E1 = 10.0}
+
+# Test zero exponent variations
+assert{1.0e0 = 1.0}
+assert{1.0E0 = 1.0}
+assert{5.67e0 = 5.67}
+assert{123.456E0 = 123.456}
+assert{1.0e+0 = 1.0}
+assert{1.0e-0 = 1.0}
+assert{1.0E+0 = 1.0}
+assert{1.0E-0 = 1.0}
+
+# Test scientific notation without decimal point in mantissa
+assert{1e10 = 10000000000.0}
+assert{2e5 = 200000.0}
+assert{5e3 = 5000.0}
+assert{1e0 = 1.0}
+assert{9e2 = 900.0}
+assert{1E10 = 10000000000.0}
+assert{2E5 = 200000.0}
+
+# Test negative numbers in scientific notation
+assert{-1.5e2 = -150.0}
+assert{-2.5e-1 = -0.25}
+assert{-1.0e+3 = -1000.0}
+assert{-5.5e-2 = -0.055}
+assert{-1.5E2 = -150.0}
+assert{-2.5E-1 = -0.25}
+assert{-1e10 = -10000000000.0}
+
+# Exponent with leading zeros
+assert{1.0e+01 = 10.0}
+assert{1.0e+001 = 10.0}
+assert{1.0e-007 = 1.0e-7}
+assert{1.0E+01 = 10.0}
+assert{5.0e+02 = 500.0}
+
+# Cross-over exponent tests (exponent changes magnitude direction)
+assert{0.001e+3 = 1.0}
+assert{0.5e+2 = 50.0}
+assert{0.01e+4 = 100.0}
+assert{1000.0e-3 = 1.0}
+assert{500.0e-2 = 5.0}
+assert{25000.0e-4 = 2.5}
+
 # Tests for the exact bits produced by float literal parsing.
 
 assert{TestUtils.BitcastFloatToInt(0.0)  = 0x0000000000000000}
 assert{TestUtils.BitcastFloatToInt(1.0)  = 0x3ff0000000000000}
+
+# Powers of 2 (exactly representable in IEEE 754)
+assert{TestUtils.BitcastFloatToInt(0.5)   = 0x3fe0000000000000}
+assert{TestUtils.BitcastFloatToInt(0.25)  = 0x3fd0000000000000}
+assert{TestUtils.BitcastFloatToInt(0.125) = 0x3fc0000000000000}
+assert{TestUtils.BitcastFloatToInt(2.0)   = 0x4000000000000000}
+assert{TestUtils.BitcastFloatToInt(4.0)   = 0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(8.0)   = 0x4020000000000000}
+assert{TestUtils.BitcastFloatToInt(16.0)  = 0x4030000000000000}
+assert{TestUtils.BitcastFloatToInt(32.0)  = 0x4040000000000000}
 
 assert{TestUtils.BitcastFloatToInt(-1.0)   = -0x4010000000000000}
 assert{TestUtils.BitcastFloatToInt(- 1.0)  = -0x4010000000000000}
@@ -96,6 +217,12 @@ assert_syntax_error(3100){"0x1.p0" }#assert{+1.0 = +0x1p+0}
 # Test that float literals round-trip between the VST and text.
 assert_roundtrip{1.234f64}
 assert_roundtrip{1.234}
+assert_roundtrip{0.001}
+assert_roundtrip{1.0e+10}
+assert_roundtrip{1.0e-10}
+assert_roundtrip{-1.23e+5}
+assert_roundtrip{0.5}
+assert_roundtrip{123.456}
 
 # Test the smallest representable floats.
 assert{TestUtils.BitcastFloatToInt(+2.4703282292062327e-324) = 0x0000000000000000} # largest underflow
@@ -116,6 +243,14 @@ assert{TestUtils.BitcastFloatToInt(-1.7976931348623158e+308) = -0x00100000000000
 
 assert_semantic_error(3554){F():float=+1.7976931348623159e+308} # smallest overflow
 assert_semantic_error(3554){F():float=-1.7976931348623159e+308}
+assert_semantic_error(3554){F():float=+2.0e+308} # These should overflow
+assert_semantic_error(3554){F():float=-2.0e+308}
+assert_semantic_error(3554){F():float=+5.0e+308}
+assert_semantic_error(3554){F():float=-5.0e+308}
+assert_semantic_error(3554){F():float=+2.0E+308} # Uppercase E
+assert_semantic_error(3554){F():float=-2.0E+308}
 
 assert_semantic_error(3554){F():float=+1.0e+100000} # big overflow
 assert_semantic_error(3554){F():float=-1.0e+100000}
+assert_semantic_error(3554){F():float=+1.0E+100000} # big overflow (uppercase E)
+assert_semantic_error(3554){F():float=-1.0E+100000}

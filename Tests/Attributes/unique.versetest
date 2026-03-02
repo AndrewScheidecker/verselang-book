@@ -110,16 +110,16 @@ assert_semantic_error(3512):
     some_class := class<unique><computes>:
 
 # <unique> is heritable, so a class inheriting a unique interface must provide the <allocates> in some form
-assert_semantic_error(3512):
+assert_semantic_error(3512, 3512):
     unique_interface2 := interface<unique>{}
     computes_class_ := class<computes>(unique_interface2){}
 
 assert_valid:
-    unique_interface2 := interface<unique>{}
+    unique_interface2 := interface<allocates><unique>{}
     computes_class_ := class<computes><allocates>(unique_interface2){}
 
 assert_valid:
-    unique_interface2 := interface<unique>{}
+    unique_interface2 := interface<allocates><unique>{}
     base_class2 := class<abstract><computes><allocates>(unique_interface2){}
     class_type2 := class<unique>(base_class2){}
 

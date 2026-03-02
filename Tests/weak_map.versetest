@@ -134,11 +134,23 @@ assert_semantic_error(3524):
 # Test coercion to and from `any`
 Identity(X:t where t:type):t = X
 
+# Test against a small map
 assert:
     X:weak_map(int, int) = map{1 => 2, 3 => 4}
     Y := Identity(X)
     Y[1] = 2
     Y[3] = 4
+
+# Test against a medium map to try to exercise different allocation behavior
+assert:
+    X:weak_map(int, int) = map{1 => 2, 3 => 4, 5 => 6, 7 => 8, 9 => 10, 11 => 12}
+    Y := Identity(X)
+    Y[1] = 2
+    Y[3] = 4
+    Y[5] = 6
+    Y[7] = 8
+    Y[9] = 10
+    Y[11] = 12
 
 # Test coercion to and from `comparable`
 assert_semantic_error(3509):
@@ -371,13 +383,15 @@ assert:
 
     Updates.Length = 2
 
-    Updates[0](0) = "PersistentData"
-    Updates[0](1) = PersistentKey3
-    Updates[0](2) = 3
+	Updates[0](0) = "Verse.org/VerseTests.PersistentData"
+    Updates[0](1) = "PersistentData"
+    Updates[0](2) = PersistentKey3
+    Updates[0](3) = 3
 
-    Updates[1](0) = "PersistentData"
-    Updates[1](1) = PersistentKey4
-    Updates[1](2) = 4
+	Updates[1](0) = "Verse.org/VerseTests.PersistentData"
+    Updates[1](1) = "PersistentData"
+    Updates[1](2) = PersistentKey4
+    Updates[1](3) = 4
 
 # Combined updates
 assert:
@@ -398,19 +412,23 @@ assert:
     Updates := Persistence.TakeRecordedUpdates()
 
     Updates.Length = 2
-    if (Updates[0](1) = PersistentKey3):
-        Updates[0](0) = "PersistentData"
-        Updates[0](2) = 5
-        Updates[1](0) = "PersistentData"
-        Updates[1](1) = PersistentKey4
-        Updates[1](2) = 6
+    if (Updates[0](2) = PersistentKey3):
+        Updates[0](0) = "Verse.org/VerseTests.PersistentData"
+        Updates[0](1) = "PersistentData"
+        Updates[0](3) = 5
+        Updates[1](0) = "Verse.org/VerseTests.PersistentData"
+        Updates[1](1) = "PersistentData"
+        Updates[1](2) = PersistentKey4
+        Updates[1](3) = 6
     else:
-        Updates[0](0) = "PersistentData"
-        Updates[0](1) = PersistentKey4
-        Updates[0](2) = 6
-        Updates[1](0) = "PersistentData"
-        Updates[1](1) = PersistentKey3
-        Updates[1](2) = 5
+        Updates[0](0) = "Verse.org/VerseTests.PersistentData"
+        Updates[0](1) = "PersistentData"
+        Updates[0](2) = PersistentKey4
+        Updates[0](3) = 6
+        Updates[1](0) = "Verse.org/VerseTests.PersistentData"
+        Updates[1](1) = "PersistentData"
+        Updates[1](2) = PersistentKey3
+        Updates[1](3) = 5
 
 # Partial writes
 PartialRefCall := module:
@@ -436,8 +454,9 @@ assert:
     Updates.Length >= 1
 
     for (Update : Updates):
-        Update(0) = "PartialRefCall.Data"
-        Update(1) = PersistentKey3
+        Update(0) = "Verse.org/VerseTests/PartialRefCall.Data"
+        Update(1) = "PartialRefCall.Data"
+        Update(2) = PersistentKey3
 
 # Repeatedly set partial data
 assert:
@@ -458,8 +477,9 @@ assert:
     Updates.Length >= 1
 
     for (Update : Updates):
-        Update(0) = "PartialRefCall.Data"
-        Update(1) = PersistentKey3
+        Update(0) = "Verse.org/VerseTests/PartialRefCall.Data"
+        Update(1) = "PartialRefCall.Data"
+        Update(2) = PersistentKey3
 
 # Set data, then fail
 assert:
@@ -503,8 +523,9 @@ assert:
     Updates.Length >= 1
 
     for (Update : Updates):
-        Update(0) = "PartialRefCall.Data"
-        Update(1) = PersistentKey3
+        Update(0) = "Verse.org/VerseTests/PartialRefCall.Data"
+        Update(1) = "PartialRefCall.Data"
+        Update(2) = PersistentKey3
 
 # Test moving to invalid key
 assert:

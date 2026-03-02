@@ -72,11 +72,15 @@ assert: # Some extra verifications
     OuterObj3.Collection.ObjList[0] = O3? 
 
 # Test that constructors works
-counter := class:
+counter := class<allocates>:
     var Value:int=0
     Add(X:int)<transacts>:void =
         set Value = Value + X
 
+# TODO(SOL-8757): This test relies on initializing (class1:)Value1 without the effect token.
+# It's dubious whether we can allow this even with SOL-8757- class2's Value1.Add effects must be
+# performed leniently, but the checker can't know that Value1's initializer is only <allocates>.
+verse_vm_todo{
 class1 := class:
     Value1:counter = counter{}
     block:
@@ -109,6 +113,7 @@ assert:
     X4 : class2 = MakeClass2()
     110 = X4.Value1.Value
     100 = X4.Value2.Value
+} #verse_vm_todo
 
 
 # Test constructor that modifies property, with counter to verify SOL-3300 is solved.

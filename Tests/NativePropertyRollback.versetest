@@ -1,0 +1,171 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyLogic = true
+    if:
+        T.MyLogic = true or Err("property test failed")
+        set T.MyLogic = false
+        T.MyLogic = false or Err("property change failed")
+        false? # rollback
+
+    T.MyLogic = true or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyChar = 'X'
+    if:
+        T.MyChar = 'X' or Err("property test failed")
+        set T.MyChar = 'Y'
+        T.MyChar = 'Y' or Err("property change failed")
+        false? # rollback
+
+    T.MyChar = 'X' or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyChar32 = '😄'
+    if:
+        T.MyChar32 = '😄' or Err("property test failed")
+        set T.MyChar32 = '❌'
+        T.MyChar32 = '❌' or Err("property change failed")
+        false? # rollback
+
+    T.MyChar32 = '😄' or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyInt = 123
+    if:
+        T.MyInt = 123 or Err("property test failed")
+        set T.MyInt = 456
+        T.MyInt = 456 or Err("property change failed")
+        false? # rollback
+
+    T.MyInt = 123 or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyFloat = 123.0
+    if:
+        T.MyFloat = 123.0 or Err("property test failed")
+        set T.MyFloat = 456.0
+        T.MyFloat = 456.0 or Err("property change failed")
+        false? # rollback
+
+    T.MyFloat = 123.0 or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyRational = 2/3 or Err("rational assignment failed")
+    if:
+        T.MyRational = 2/3 or Err("property test failed")
+        set T.MyRational = 5/7 or Err("rational assignment failed")
+        T.MyRational = 5/7 or Err("property change failed")
+        false? # rollback
+
+    T.MyRational = 2/3 or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyOption = option{123.0}
+    if:
+        T.MyOption? = 123.0 or Err("property test failed")
+        set T.MyOption = option{456.0}
+        T.MyOption? = 456.0 or Err("property change failed")
+        false? # rollback
+
+    T.MyOption? = 123.0 or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyTuple = ('A', 'B', 'C')
+    if:
+        T.MyTuple = ('A', 'B', 'C') or Err("property test failed")
+        set T.MyTuple = ('1', '2', '3')
+        T.MyTuple = ('1', '2', '3') or Err("property change failed")
+        false? # rollback
+
+    T.MyTuple = ('A', 'B', 'C') or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyEnum = Numbers.One
+    if:
+        T.MyEnum = Numbers.One or Err("property test failed")
+        set T.MyEnum = Numbers.Two
+        T.MyEnum = Numbers.Two or Err("property change failed")
+        false? # rollback
+
+    T.MyEnum = Numbers.One or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyArray = array{1, 2, 3}
+    if:
+        T.MyArray = array{1, 2, 3} or Err("property test failed")
+        set T.MyArray = array{4, 5, 6, 7}
+        T.MyArray = array{4, 5, 6, 7} or Err("property change failed")
+        false? # rollback
+
+    T.MyArray = array{1, 2, 3} or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyMap = map{'a' => 1, 'b' => 2, 'c' => 3}
+    if:
+        T.MyMap = map{'a' => 1, 'b' => 2, 'c' => 3} or Err("property test failed")
+        set T.MyMap = map{'d' => 4, 'e' => 5}
+        T.MyMap = map{'d' => 4, 'e' => 5} or Err("property change failed")
+        false? # rollback
+
+    T.MyMap = map{'a' => 1, 'b' => 2, 'c' => 3} or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyString = "meow"
+    if:
+        T.MyString = "meow" or Err("property test failed")
+        set T.MyString = "woof"
+        T.MyString = "woof" or Err("property change failed")
+        false? # rollback
+
+    T.MyString = "meow" or Err("property rollback failed")
+
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyObject = tiny_native_class{X := 123}
+    if:
+        T.MyObject.X = 123 or Err("property test failed")
+        set T.MyObject = tiny_native_class{X := 456}
+        T.MyObject.X = 456 or Err("property change failed")
+        false? # rollback
+
+    T.MyObject.X = 123 or Err("property rollback failed")
+
+
+TestClass1 := class {}
+TestClass2 := class {}
+
+assert:
+    T := native_property_rollback_test{}
+    set T.MyType = TestClass1
+    if:
+        TestUtils.AreClassesEqual[T.MyType, TestClass1] or Err("property test failed")
+        set T.MyType = TestClass2
+        TestUtils.AreClassesEqual[T.MyType, TestClass2] or Err("property change failed")
+        false? # rollback
+
+    TestUtils.AreClassesEqual[T.MyType, TestClass1] or Err("property rollback failed")

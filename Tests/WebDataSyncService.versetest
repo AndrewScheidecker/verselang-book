@@ -1,0 +1,74 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+    class1 := class<persistable><final>:
+        Data:int = 0
+
+    @expose_to_web_data_sync_service_reads
+    var Global:weak_map(player, class1) = map{}
+
+    Main()<transacts><decides>:void =
+        set Global[player{}] = class1{}
+
+assert_semantic_error(3509):
+    player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+    class1 := class<persistable><final>:
+        Data:int = 0
+
+    @expose_to_web_data_sync_service_writes
+    var Global:weak_map(player, class1) = map{}
+
+    Main()<transacts><decides>:void =
+        set Global[player{}] = class1{}
+
+assert_semantic_error(3694):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+            class1 := class<persistable><final>:
+                Data:int = 0
+
+            @expose_to_web_data_sync_service_reads
+            var Global:weak_map(player, class1) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+            class1 := class<persistable><final>:
+                Data:int = 0
+
+            var Global:weak_map(player, class1) = map{}
+
+assert_semantic_error(3694):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+            class1 := class<persistable><final>:
+                Data:int = 0
+
+            @expose_to_web_data_sync_service_writes
+            var Global:weak_map(player, class1) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+            class1 := class<persistable><final>:
+                Data:int = 0
+
+            var Global:weak_map(player, class1) = map{}
+
+player<public> := class<unique><epic_internal><persistent><module_scoped_var_weak_map_key> {}
+
+class1 := class<persistable><final>:
+    Data:int = 0
+
+@expose_to_web_data_sync_service_reads
+var ExternallyRead:weak_map(player, class1) = map{}
+
+@expose_to_web_data_sync_service_writes
+var ExternallyWritten:weak_map(player, class1) = map{}

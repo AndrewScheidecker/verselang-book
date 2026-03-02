@@ -1,3 +1,5 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
 ArrTest_SuperSuper := class {}
 ArrTest_Super := class(ArrTest_SuperSuper) { i:int=0 }
 ArrTest_SubClass := class(ArrTest_Super) { getI():int={return(i)} }
@@ -109,3 +111,30 @@ assert:
     OtherKey:class1 = Key
     var X:[class2][]int = map{Key => (1, 2, 3)}
     X[OtherKey][1] = 2
+
+verse_vm_only {
+class_test:=class:
+    var X:int=0
+FiddleWithVar(C:class_test)<suspends>:void=
+    await{C.X}
+
+# Test rolling back emergent type change via result of IrForLoop being rolled back
+Foo(C:class_test)<suspends>:void=
+    for(i:=1..4):
+        if(i=1):
+            NextTick()
+            spawn:
+                Bar(C)
+        if(i=2):
+            FiddleWithVar(C)
+        i
+Bar(C:class_test)<suspends>:void=
+    NextTick()
+    if(set C.X+=1; 0=1):
+        #nothing
+    set C.X+=1
+assert:
+    C:=class_test{}
+    spawn:
+        Foo(C)
+}

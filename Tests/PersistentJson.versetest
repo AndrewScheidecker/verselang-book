@@ -104,6 +104,39 @@ assert:
     X := Persistence.FromJsonV1[Old, float_ref]
     New = Persistence.ToJson[X]
 
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":nan\}"
+    X := Persistence.FromJson[Expected, float_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":NaN\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":nan\}"
+    X := Persistence.FromJson[Old, float_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":inf\}"
+    X := Persistence.FromJson[Expected, float_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":Inf\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":inf\}"
+    X := Persistence.FromJson[Old, float_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":-inf\}"
+    X := Persistence.FromJson[Expected, float_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":-Inf\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":-inf\}"
+    X := Persistence.FromJson[Old, float_ref]
+    New = Persistence.ToJson[X]
+
 # Option
 option_ref := class:
     Contents:?int
@@ -534,6 +567,12 @@ assert:
     X := Persistence.FromJson[Old, class1]
     New = Persistence.ToJson[X]
 
+assert:
+    Old := "\{\"x_Data1\":1\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class1\",\"x_Data1\":1,\"x_Data2\":42\}"
+    X := Persistence.FromJson[Old, class1]
+    New = Persistence.ToJson[X]
+
 class2 := class:
     Data1:int
     block:
@@ -584,6 +623,12 @@ assert:
     Expected := "\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"native_persistable_class2\",\"x_A\":\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"external_persistable_class1\",\"x_A\":1\}\}"
     X := Persistence.FromJson[Expected, native_persistable_class2]
     Expected = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"x_A\":\{\"x_A\":1\}\}"
+    New := "\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"native_persistable_class2\",\"x_A\":\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"external_persistable_class1\",\"x_A\":1\}\}"
+    X := Persistence.FromJson[Old, native_persistable_class2]
+    New = Persistence.ToJson[X]
 
 class7 := class:
     Data1:native_persistable_struct2

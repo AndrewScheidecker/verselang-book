@@ -570,6 +570,20 @@ assert:
 
     M = map { 2=>4, 5=>5, 4=>2, 0=>1, 3=>12 }
 
+assert:
+    var M:[int]int = map {2=>4, 2=>5}
+    set M[0] = 1
+    M = map { 2=>5, 0=>1 }
+    M[2] = 5
+    M[0] = 1
+
+assert:
+    var M:[int]int = ConcatenateMaps(map{2=>4}, map{2=>5})
+    set M[0] = 1
+    M = map { 2=>5, 0=>1 }
+    M[2] = 5
+    M[0] = 1
+
 assert_semantic_error(3515):
     c0 := class:
         var M0:=map{}

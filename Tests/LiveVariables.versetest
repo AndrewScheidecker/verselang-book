@@ -15,38 +15,90 @@ assert_semantic_error(3512):
         var live Y:int = block:
             set X = 1
 
-assert_semantic_error(3509):
-    Main():void =
-        Identity(Arg:t where t:type):t = Arg
-        var X:type{_(:int):int} = Identity
-        var Y:type{_(:int):int} = Identity
-        set live X = Y
+assert:
+    Identity(Arg:t where t:type):t = Arg
+    var X:type{_(:int):int} = Identity
+    var Y:type{_(:int):int} = Identity
+    set live X = Y
+    var Z:int = 0
+    upon(X). set Z = 1
+    set Y = Identity
+    Z = 0
 
-assert_semantic_error(3509):
-    Main():void =
-        Identity(Arg:t where t:type):t = Arg
-        var X:type{_(:int):int} = Identity
-        var live Y:type{_(:int):int} = X
+assert:
+    Identity(Arg:t where t:type):t = Arg
+    Wrapper(Arg:t where t:type):t = Identity(Arg)
+    var X:type{_(:int):int} = Identity
+    var Y:type{_(:int):int} = Identity
+    set live X = Y
+    var Z:int = 0
+    upon(X). set Z = 1
+    set Y = Wrapper
+    Z = 1
+
+assert:
+    Identity(Arg:t where t:type):t = Arg
+    Wrapper(Arg:t where t:type):t = Identity(Arg)
+    var X:type{_(:int):int} = Identity
+    var live Y:type{_(:int):int} = X
+    var Z:int = 0
+    upon(Y). set Z = 1
+    set X = Wrapper
+    Z = 1
+
+Unify := module:
+    class1<public> := class {}
+
+assert:
+    var X:Unify.class1 = Unify.class1{}
+    var Y:Unify.class1 = Unify.class1{}
+    set live X = Y
+    var Z:int = 0
+    upon(X). set Z = 1
+    set Y = Y
+    Z = 0
+
+assert:
+    var X:Unify.class1 = Unify.class1{}
+    var Y:Unify.class1 = Unify.class1{}
+    set live X = Y
+    var Z:int = 0
+    upon(X). set Z = 1
+    set Y = Unify.class1{}
+    Z = 1
+
+assert:
+    var X:any = Unify.class1{}
+    var Y:any = Unify.class1{}
+    set live X = Y
+    var Z:int = 0
+    upon(X). set Z = 1
+    set Y = 2
+    Z = 1
 
 assert_semantic_error(3552):
     Main():void =
         var X:int = 0
         set live X += 1
 
-assert_semantic_error(3552):
-    Main():void =
-        var X:int = 0
-        loop:
-            var Y:int = 0
-            set live X = Y
-            break
+assert:
+    var X:int = 0
+    loop:
+        var Y:int = 10
+        set live X = Y
+        set Y = 5
+        break
+    X = 5
 
-assert_semantic_error(3552):
-    Main():void =
-        loop:
-            var Y:int = 0
-            var live X:int = Y
-            break
+assert:
+    var Z : int = 0
+    loop:
+        var Y:int = 10
+        var live X:int = Y
+        set Y = 5
+        set Z = X
+        break
+    Z = 5
 
 assert_semantic_error(3685):
     Main():void =
@@ -62,6 +114,10 @@ assert_semantic_error(3686):
 assert_semantic_error(3552):
     class1 := class:
         var live X:int
+
+assert_semantic_error(3552):
+    class1 := class:
+        live X:int
 
 assert:
     var X:int = 0
@@ -373,4 +429,130 @@ assert:
     set live X.Data1 = if (Y.Data1 < 0) then 0 else Y.Data1 - 1
     X.Data1 = 0
     Y.Data1 = -1
+
+Method := module:
+    class1<public> := class:
+        var X<public>:int = 1
+        var Y<public>:int = 2
+        F()<reads>:int = Y
+        block:
+            set live X = F()
+
+assert:
+    X := Method.class1{}
+    set X.Y = 3
+    X.X = 3
+
+assert_semantic_error(3502):
+    live SessionValue1:int = 1
+
+# await creates a transparent ref which converts the array's buffer to hold VValues
+assert:
+    var X:[]int = (1, 2)
+    var Y:int = 0
+    if:
+        set X[1] = 3
+        spawn:
+            await. X[0]
+            set Y = 1
+        false?
+    X = (1, 2)
+    Y = 0
+    set X[0] = 4
+    Y = 0
+
+# await creates a transparent ref for an element in an outer transaction log
+assert:
+    var X:[]int = (1, 2)
+    var Y:int = 0
+    if:
+        set X[1] = 3
+        spawn:
+            await. X[1]
+            set Y = 1
+        false?
+    X = (1, 2)
+    Y = 0
+    set X[1] = 4
+    Y = 0
+
+# await creates a transparent ref and then is rolled back
+assert:
+    var X:[int]int = map{0 => 1, 1 => 2}
+    var Y:int = 0
+    if:
+        set X[1] = 3
+        spawn:
+            await. X[0]
+            set Y = 1
+        false?
+    X = map{0 => 1, 1 => 2}
+    Y = 0
+    set X[0] = 4
+    Y = 0
+
+# await creates a transparent ref for an element in an outer transaction log
+assert:
+    var X:[int]int = map{0 => 1, 1 => 2}
+    var Y:int = 0
+    if:
+        set X[1] = 3
+        spawn:
+            await. X[1]
+            set Y = 1
+        false?
+    X = map{0 => 1, 1 => 2}
+    Y = 0
+    set X[1] = 4
+    Y = 0
+
+
+VValueArray := module:
+    elem<public> := struct<computes>:
+        Data<public>:int
+
+# await creates a transparent ref for a member in an outer transaction log
+assert:
+    var X:VValueArray.elem = VValueArray.elem{Data := 1}
+    var Y:int = 0
+    if:
+        set X.Data = 3
+        spawn:
+            await. X.Data
+            set Y = 1
+        false?
+    X = VValueArray.elem{Data := 1}
+    Y = 0
+    set X.Data = 4
+    Y = 0
+
+# await creates a transparent ref and then is rolled back
+assert:
+    var X:[]VValueArray.elem = (VValueArray.elem{Data := 1}, VValueArray.elem{Data := 2})
+    var Y:int = 0
+    if:
+        set X[1] = VValueArray.elem{Data := 3}
+        spawn:
+            await. X[0]
+            set Y = 1
+        false?
+    X = (VValueArray.elem{Data := 1}, VValueArray.elem{Data := 2})
+    Y = 0
+    set X[1] = VValueArray.elem{Data := 4}
+    Y = 0
+
+# await creates a transparent ref for an element in an outer transaction log and then is rolled back
+assert:
+    var X:[]VValueArray.elem = (VValueArray.elem{Data := 1}, VValueArray.elem{Data := 2})
+    var Y:int = 0
+    if:
+        set X[1] = VValueArray.elem{Data := 3}
+        spawn:
+            await. X[1]
+            set Y = 1
+        false?
+    X = (VValueArray.elem{Data := 1}, VValueArray.elem{Data := 2})
+    Y = 0
+    set X[1] = VValueArray.elem{Data := 4}
+    Y = 0
 }

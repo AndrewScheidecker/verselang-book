@@ -2,7 +2,7 @@
 
 using{/Verse.org/Tests/VerseTestScriptCmd}
 
-e := enum{Z}
+e := enum{A,B,C,D,E,F,Z}
 
 # Test that calling a function on any implicitly coerces its arguments to any.
 F0(X:any):any=X
@@ -162,3 +162,122 @@ int_list_node := class(list_node):
     Data2<override>:int=0
 assert{int_list_node{Data:=10}.Data=10}
 assert{int_list_node{Data2:=10}.Data2=10}
+
+# Test that maps survive a roundtrip through any.
+Identity(X:t where t:type):t = X
+assert:
+    X:[int]int = map{1 => 2, 3 => 4, 5 => 6, 7 => 8, 9 => 10, 11 => 12, 9223372036854775807 => 13, -9223372036854775808 => 14}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[?int]int = map:
+        option{1} => 2
+        option{3} => 4
+        option{5} => 6
+        option{7} => 8
+        option{9} => 10
+        option{11} => 12
+        option{9223372036854775807} => 13
+        option{-9223372036854775808} => 14
+        false => 13
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[float]int = map{1.0 => 2, 3.0 => 4, 5.0 => 6, 7.0 => 8, NaN => 10, Inf => 12}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[logic]int = map{false => 1, true => 2}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[char]int = map{'a' => 2, 'z' => 4, '0' => 6, '+' => 8, 0o80 => 10, 0off => 12}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[char32]int = map{0u000a0 => 2, 0u0007f => 4, 0u00080 => 6, '好' => 8, '😀' => 10, 0u10ffff => 12}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+MakeRational(A:int, B:int):rational = A / B or Err("unexpected divide by zero")
+assert:
+    X:[rational]int = map:
+        MakeRational(1, 2) => 2
+        MakeRational(2, 3) => 4
+        MakeRational(3, 4) => 6
+        MakeRational(4, 5) => 8
+        MakeRational(5, 6) => 10
+        MakeRational(8, 8) => 12
+        MakeRational(9, 9) => 13
+    Y := Identity(X)
+    X = Y
+    X[8/8] = X[9/9] = Y[8/8] = Y[9/9] = 13
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[string]int = map{"abc" => 2, "def" => 4, "你好" => 6, "Hello 😀" => 8, "" => 10, "{0o00}" => 12, "{0o00}{0off}{0o01}" => 13}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    var X:[unique_class]int = map{}
+    for (I := 0..10):
+        set X[unique_class{}] = I
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[tuple(int, int)]int = map:
+        (-1,0) => 2
+        (+0,1) => 4
+        (+1,2) => 6
+        (+2,3) => 8
+        (+3,4) => 10
+        (+4,5) => 12
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+struct_key := struct{X:int, Y:int}
+assert:
+    X:[struct_key]int = map:
+        struct_key{X:=-1,Y:=0} => 2
+        struct_key{X:=+0,Y:=1} => 4
+        struct_key{X:=+1,Y:=2} => 6
+        struct_key{X:=+2,Y:=3} => 8
+        struct_key{X:=+3,Y:=4} => 10
+        struct_key{X:=+4,Y:=5} => 12
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value
+
+assert:
+    X:[e]int = map{e.A=>0, e.B=>1, e.C=>2, e.D=>3, e.E=>4, e.F=>5, e.Z=>6}
+    Y := Identity(X)
+    X = Y
+    for (Key->Value : X):
+        Y[Key] = X[Key] = Value

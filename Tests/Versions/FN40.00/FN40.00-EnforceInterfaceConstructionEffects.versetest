@@ -1,0 +1,5 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Interface construction effects must constrain the construction effects of classes that inherit them.
+assert_valid               {vpackage(A,/A,?UploadedAtFNVersion:=3999){snippet{i := interface{}; c := class<computes>(i){}}}}
+assert_semantic_error(3512){vpackage(A,/A,?UploadedAtFNVersion:=4000){snippet{i := interface{}; c := class<computes>(i){}}}}

@@ -5,7 +5,7 @@ assert_semantic_error(3502){Global:tuple(Global,int)=(0,0)}
 assert_semantic_error(3502){F():void={Local:Local=0}}
 assert_semantic_error(3502){F(Parameter:Parameter):void={}}
 assert_semantic_error(3502){F():F={}}
-assert_semantic_error(3502){c := class{Member:Member}}
+assert_semantic_error(3502, 3502){c := class{Member:Member}}
 
 assert_semantic_error(3547){Global1:(Global2:int=0)=0}
 
@@ -24,6 +24,6 @@ assert_semantic_error(3547){F(Parameter1:int       , Parameter2:Parameter1):void
 assert_semantic_error(3502){F(Parameter1:Parameter2, Parameter2:int       ):void={}}
 assert_semantic_error(3502){F(Parameter1:Parameter2, Parameter2:Parameter1):void={}}
 
-assert_semantic_error(3547){c:=class{Member1:int     = 0; Member2:Member1 = 0}}
-assert_semantic_error(3502){c:=class{Member1:Member2 = 0; Member2:int     = 0}}
-assert_semantic_error(3502){c:=class{Member1:Member2 = 0; Member2:Member1 = 0}}
+assert_semantic_error(3502, 3547){c:=class{Member1:int     = 0; Member2:Member1 = 0}}
+assert_semantic_error(3502, 3502){c:=class{Member1:Member2 = 0; Member2:int     = 0}}
+assert_semantic_error(3502, 3502, 3502){c:=class{Member1:Member2 = 0; Member2:Member1 = 0}}

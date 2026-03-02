@@ -1,0 +1,69 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# The problem in SOL-8267 was that foo_1 and foo_2 share the same instance of bar.
+
+bar := class:
+    var Value:int = 0
+foo := interface:
+    Bar:bar = bar{}
+foo_1 := class(foo):
+foo_2 := class(foo):
+assert:
+    Foo1 := foo_1{}
+    Foo2 := foo_2{}
+    Foo3 := foo_2{ Bar := bar{} }
+    Foos:[]foo = array:
+        Foo1
+        Foo2
+        Foo3
+    for (Foo : Foos):
+        Foo.Bar.Value = 0
+    set Foo2.Bar.Value = 10
+    for (Ix->Foo : Foos):
+        Foo.Bar.Value = if (Ix = 1) { 10 } else { 0 }
+
+
+# A variant of the above test, using the same class for all object. 
+assert:
+    Foo1 := foo_1{}
+    Foo2 := foo_1{}
+    Foo3 := foo_1{ Bar := bar{} }
+    Foos:[]foo = array:
+        Foo1
+        Foo2
+        Foo3
+    for (Foo : Foos):
+        Foo.Bar.Value = 0
+    set Foo2.Bar.Value = 10
+    for (Ix->Foo : Foos):
+        Foo.Bar.Value = if (Ix = 1) { 10 } else { 0 }
+
+# Digests does not contain information about accessors, which introduced a bug that is tested here.
+# Use definitions from Engine\Restricted\NotForLicensees\Source\Programs\Solaris\VerseTestScriptCmd\Verse\SOL-8267-InterfaceDefaultsAreNotReinstansiated.native.verse
+
+assert:
+    Object:no_defun_easy = no_defun_easy{}
+    Object.Value = 42
+
+# Hard as in we only have the information in the digest, and it doesn't tell about the accessors
+no_defun_hard := class(interface_with_accessors):
+
+assert:
+    Object:no_defun_hard = no_defun_hard{}
+    Object.Value = 42
+
+
+# Variant of the first test but on something in a digest.
+
+class_1 := class(interface_with_default_value):
+
+class_2 := class(interface_with_default_value):
+
+assert:
+    Object1:class_1 = class_1{}
+    Object2:class_2 = class_2{}
+    Object1.Value.X = 42
+    Object2.Value.X = 42
+    set Object1.Value.X = 21
+    Object1.Value.X = 21
+    Object2.Value.X = 42

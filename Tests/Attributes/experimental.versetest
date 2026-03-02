@@ -60,12 +60,15 @@ assert_semantic_error(3553):
 
 # Test that using an override of an @experimental definition produces an error.
 assert_semantic_error(2304):
-    vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ):
+    vpackage(PA, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=true):
         snippet:
-            c0 := class:
-                @experimental ExperimentalMethod():void={}
-            c1 := class(c0):
+            c0<public> := class:
+                @experimental ExperimentalMethod<public>():void={}
+            c1<public> := class(c0):
                 ExperimentalMethod<override>():void={}
+    vpackage(PB, /B, ?Dependencies:=(PA), ?AllowExperimental:=false):
+        snippet:
+            using{/Verse.org/A}
             Foo(C:c1):void=C.ExperimentalMethod()
 
 # Test that using an experimental definition is flagged correctly in compilation metadata.

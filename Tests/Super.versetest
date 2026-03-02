@@ -303,3 +303,17 @@ CoercionTest := module:
     sub_class<public> := class(parametric_super_class(int)):
         Method<override>(X:int):int=(super:)Method(X)+1
 assert{CoercionTest.sub_class{}.Method(1)=2}
+
+# (super:)-qualified calls to superinterface methods
+interface_base := interface:
+    var SuperCalled:logic = false
+    F():void =
+        set SuperCalled = true
+
+derived_from_interface_base := class(interface_base):
+    F<override>():void = (super:)F()
+
+assert:
+    T := derived_from_interface_base{}
+    T.F()
+    T.SuperCalled?

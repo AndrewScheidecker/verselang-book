@@ -1,0 +1,60 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# The addition of `first` to the language changed the code for `for` which now detects some errors that was previously ignored.
+ 
+# Incorrectly accept ambiguous usage of A
+assert_valid:
+    vpackage(P0, /P, ?UploadedAtFNVersion:=4099):
+        snippet:
+          A:int = 10
+          F():void =
+            for:
+                i := 1..3
+                (local:)A := A+1
+            do:
+                (local:)A
+
+assert_semantic_error(3588):
+    vpackage(P0, /P, ?UploadedAtFNVersion:=4100):
+        snippet:
+          A:int = 10
+          F():void =
+            for:
+                i := 1..3
+                (local:)A := A+1
+            do:
+                (local:)A
+
+# How to write it in >=41.00 (if you insist on reusing 'A')
+assert_valid:
+    vpackage(P0, /P, ?UploadedAtFNVersion:=4100):
+        snippet:
+          A:int = 10
+          F():void =
+            for:
+                i := 1..3
+                (local:)A := (/P:)A+1
+            do:
+                (local:)A
+
+# Incorrectly accept syntax for extension field definition, but treats it as a local variable
+# This is FORT-1040368 (caused when 'if' was allowed on iterators)
+assert_valid:
+    vpackage(P0, /P, ?UploadedAtFNVersion:=4099):
+        snippet:
+          F():void =
+            for:
+                A -> B : map{ 1 => 10 }
+                B.IsX := true  # Syntax for extension field definition, that isn't implemented yet.
+            do:
+                IsX            # Verify that incorrect line binds a new variable IsX 
+
+assert_semantic_error(3502):
+    vpackage(P0, /P, ?UploadedAtFNVersion:=4100):
+        snippet:
+          F():void =
+            for:
+                A -> B : map{ 1 => 10 }
+                B.IsX := true
+            do:
+                B

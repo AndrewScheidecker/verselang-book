@@ -1,0 +1,202 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# VM DIFFERENCE: Race completion timing
+#
+# When a race arm wins, BPVM completes the race primitive immediately (logs Z),
+# then runs the losing arm's cooperative code. VVM runs the losing arm's
+# cooperative code first (to the next suspension point), then completes the race.
+#
+# Root cause (BPVM): EmitRace in SolarisCodeGenerator.cpp jumps to DoneLabel
+# immediately when an arm completes. Cancellation runs AFTER the race primitive
+# completes.
+#
+# This affects the order of operations seen by code after the race expression.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Concurrency }
+
+############################################
+# Helper functions
+Log(Msg:string): void              = CoroUtils.LogEvent(Msg)
+GetLogStr()<transacts>: string     = return CoroUtils.GetEventLogString()
+Wait(Ticks:int)<suspends>: void    = CoroUtils.WaitTicks(Ticks)
+Tick(Ticks:int): void              = CoroUtils.Tick(Ticks)
+
+# Assert helper that prints actual vs expected on failure
+AssertLogStr(TestName:string, Expected:string, ?BPVMExpected:string = Expected)<transacts><decides>: void =
+    Actual := GetLogStr()
+    verse_vm_only:
+        if (Actual <> Expected):
+            DebugPrint("{TestName} FAIL (VVM): Expected '{Expected}' but got '{Actual}'")
+            false?
+    bp_vm_only:
+        if (Actual <> BPVMExpected):
+            DebugPrint("{TestName} FAIL (BPVM): Expected '{BPVMExpected}' but got '{Actual}'")
+            false?
+
+
+############################################
+# Test 1: Self-cancel via event signal
+#
+# Arm2 signals event, causing Arm1 to win. When does Z run?
+#
+# VVM ("ABC,DWEZ,,"): After W (winner), D runs (cooperative), then E, then Z
+# BPVM ("ABC,DWZE,,"): After W, Z runs immediately, then E continues
+#
+TestSelfCancelViaRaceEvent()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            Log("C")
+            Wait(1)
+            Log("D")
+            Event.Signal()
+            Log("E")
+            Wait(1)
+            Log("X")
+    Log("Z")
+    Wait(1)
+
+assert:
+    spawn{TestSelfCancelViaRaceEvent()}
+    Tick(3)
+    AssertLogStr["TestSelfCancelViaRaceEvent", "ABC,DWEZ,,", ?BPVMExpected:="ABC,DWZE,,"]
+
+
+############################################
+# Test 2: Cross-signal between race arms
+#
+# Arm1 signals event after Wait, causing Arm2 (awaiting) to win.
+#
+# VVM ("ABE,CFDZ,"): After F (winner), C continues with D, then Z
+# BPVM ("ABE,CFZD,"): After F, Z runs immediately, then D continues
+#
+TestRaceEventCrossSignal()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("B")
+            Wait(1)
+            Log("C")
+            Event.Signal()
+            Log("D")
+        block:
+            Log("E")
+            Event.Await()
+            Log("F")
+    Log("Z")
+
+assert:
+    spawn{TestRaceEventCrossSignal()}
+    Tick(2)
+    AssertLogStr["TestRaceEventCrossSignal", "ABE,CFDZ,", ?BPVMExpected:="ABE,CFZD,"]
+
+
+############################################
+# Test 3: Winner with defer, losing arm cooperative code
+#
+# Winning arm has defer (runs normally), losing arm has cooperative code.
+#
+# VVM ("ABC,WdEZ,"): W, d (winner's defer), E (cooperative), Z
+# BPVM ("ABC,WdZE,"): W, d (winner's defer), Z, then E continues
+#
+TestRaceDeferInWinningArm()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            defer:
+                Log("d")
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            Log("C")
+            Wait(1)
+            Event.Signal()
+            Log("E")
+            Wait(1)
+            Log("X")
+    Log("Z")
+
+assert:
+    spawn{TestRaceDeferInWinningArm()}
+    Tick(2)
+    AssertLogStr["TestRaceDeferInWinningArm", "ABC,WdEZ,", ?BPVMExpected := "ABC,WdZE,"]
+
+
+############################################
+# Test 4: Multiple immediate operations after signal
+#
+# Losing arm does many immediate ops (1,2,3,4) after triggering winner.
+#
+# VVM ("ABC,W1234Z,"): All immediate ops run before Z
+# BPVM ("ABC,WZ1234,"): Z runs immediately, then 1234 continues
+#
+TestRaceWinnerMultipleOps()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            Log("C")
+            Wait(1)
+            Event.Signal()
+            Log("1")
+            Log("2")
+            Log("3")
+            Log("4")
+            Wait(1)
+            Log("X")
+    Log("Z")
+
+assert:
+    spawn{TestRaceWinnerMultipleOps()}
+    Tick(2)
+    AssertLogStr["TestRaceWinnerMultipleOps", "ABC,W1234Z,", ?BPVMExpected:="ABC,WZ1234,"]
+
+
+############################################
+# Test 5: Loop mid-iteration when race wins
+#
+# A loop inside a race arm is interrupted mid-iteration when race completes.
+#
+# VVM: Cooperative code (L1b, L1c) runs before Z
+# BPVM: Z runs immediately, then L1b, L1c continue
+#
+TestLoopMidIterationCancel()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("W")
+            Event.Await()
+            Log("WIN")
+        block:
+            var I:int = 0
+            loop:
+                Log("L{I}a")
+                if (I = 1):
+                    Event.Signal()
+                    Log("L{I}b")
+                    Log("L{I}c")
+                Wait(1)
+                Log("L{I}d")
+                set I += 1
+                if (I > 5):
+                    break
+    Log("Z")
+
+assert:
+    spawn{TestLoopMidIterationCancel()}
+    Tick(3)
+    AssertLogStr["TestLoopMidIterationCancel", "AWL0a,L0dL1aWINL1bL1cZ,,", ?BPVMExpected := "AWL0a,L0dL1aWINZL1bL1c,,"]

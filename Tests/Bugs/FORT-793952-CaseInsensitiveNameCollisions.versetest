@@ -1,8 +1,6 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
-
-bp_vm_only
-{
+bp_vm_only{
 # FAILURE - no arguments and only case-differences
 assert_link_error(9200):
     cc<public> := class:
@@ -341,6 +339,42 @@ assert_link_error(9000, 9000):
         Function(Value:int):int = Value
         FUNCTION(Value:int):float = 42.0
 
-}
+# TODO(SOL-9082): Re-enable this test after making coercions consistent
+<#
+assert_link_error(9200):
+    c := class:
+        Foo(Value:int)<suspends>:void = {}
+    d := class(c):
+        foo(Value:int)<suspends>:void = {}
+#>
+} #bp_vm_only
 
+# TODO(SOL-9082): Re-enable this test after making coercions consistent
+<#
+verse_vm_only{
+c := class:
+    Foo(Value:int)<suspends>:int = Value + 3
+d := class(c):
+    foo(Value:int)<suspends>:int = Value + 5
+assert:
+    spawn:
+        Value := d{}.Foo(8)
+        Value = 11 or Err()
+} #verse_vm_only
+#>
 
+auto_qualify_todo{
+# TODO(SOL-9082): Update this version after re-enabling the tests above
+vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=3999):
+    vmodule(B):
+        snippet:
+            c := class:
+                Foo(Value:int)<suspends>:int = Value + 3
+            d := class(c):
+                foo(Value:int)<suspends>:int = Value + 5
+            Test()<suspends>:void =
+                Value := d{}.Foo(8)
+                Value = 13 or Err()
+            assert:
+                spawn{Test()}
+} #auto_qualify_todo

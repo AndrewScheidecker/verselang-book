@@ -295,3 +295,20 @@ assert_valid:
             B := class(A){} # Should not be ambiguous and refer to X.A since Y.A is inaccessible
 #>
 
+
+# The accessibility of members with no default value must be no less than the interface's constructor.
+assert_valid                {access_test_i1<public>   := interface          {AccessTestX<public>:int}}
+assert_semantic_error(3593) {access_test_i2<public>   := interface          {AccessTestX<internal>:int}}
+assert_semantic_error(3593) {access_test_i3<public>   := interface          {AccessTestX<protected>:int}}
+assert_semantic_error(3593) {access_test_i4<public>   := interface          {AccessTestX<private>:int}}
+assert_semantic_error(3593) {access_test_i5<public>   := interface          {AccessTestX<epic_internal>:int}}
+
+assert_valid                {access_test_i6<internal> := interface          {AccessTestX<public>:int}}
+assert_valid                {access_test_i7<internal> := interface          {AccessTestX<internal>:int}}
+assert_semantic_error(3593) {access_test_i8<internal> := interface          {AccessTestX<protected>:int}}
+assert_semantic_error(3593) {access_test_i9<internal> := interface          {AccessTestX<private>:int}}
+
+assert_valid                {access_test_i10<public> := interface<internal> {AccessTestX<public>:int}}
+assert_valid                {access_test_i11<public> := interface<internal> {AccessTestX<internal>:int}}
+assert_semantic_error(3593) {access_test_i12<public> := interface<internal> {AccessTestX<protected>:int}}
+assert_semantic_error(3593) {access_test_i13<public> := interface<internal> {AccessTestX<private>:int}}

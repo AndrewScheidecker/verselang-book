@@ -231,3 +231,21 @@ assert_valid:
     class2 := class(class1):
         Property<override>:int = 0
     class3 := class<concrete>(class2):
+
+assert_valid:
+    class1 := class {}
+    class2 := class<castable><concrete>(class1) {}
+    F(t:castable_subtype(u) where u:concrete_subtype(class1)):void = {}
+    G():void = F(class2)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class<castable>(class1) {}
+    F(t:castable_subtype(u) where u:concrete_subtype(class1)):void = {}
+    G():void = F(class2)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class<concrete>(class1) {}
+    F(t:castable_subtype(u) where u:concrete_subtype(class1)):void = {}
+    G():void = F(class2)

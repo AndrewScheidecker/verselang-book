@@ -502,7 +502,7 @@ assert:
 
 ########## STM doesn't support spawn, don't allow in decides
 bp_vm_only {
-assert_semantic_error(3512):
+assert_semantic_error(3512, 3512):
     DoSomething()<suspends>:void = {}
     DoSpawn()<transacts><decides>:void = spawn{ DoSomething() }
 }

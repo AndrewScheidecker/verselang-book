@@ -1,24 +1,37 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_semantic_error(3502):
+    var X<public>:int = 0
+
 # Check that global variables cannot be "hacked" in by using a global class instance.
-assert_semantic_error(3512):
+assert_link_error(9003):
     foo_module := module:
         global_class_instance := class<allocates>:
             var X<public>:int = 0
         MyGlobalVariable:global_class_instance = global_class_instance{}
 
 # This should also hold true for definitions at snippet-level scope.
-assert_semantic_error(3512):
+assert_link_error(9003):
     global_class_instance := class<allocates>:
         var X<public>:int = 0
     MyGlobalVariable:global_class_instance = global_class_instance{}
 
-# This should also trigger if trying to instantiate an archetype of a sub-class that has a `<varies>` constructor.
-assert_semantic_error(3512):
-    class_that_has_varies_constructor := class<allocates>:
+# This should also trigger if trying to instantiate an archetype of a sub-class that has a `<allocates>` constructor.
+assert_link_error(9003):
+    class_that_has_allocates_constructor := class<allocates>:
         var X<public>:int = 0
 
-    global_sub_class := class(class_that_has_varies_constructor):
+    global_sub_class := class<allocates>(class_that_has_allocates_constructor):
+        Y:int
+
+    MyGlobalVariable:global_sub_class = global_sub_class{ Y := 1}
+assert_link_error(9003):
+    interface_that_has_allocates_constructor := class<allocates>:
+        var X<public>:int = 0
+
+    global_sub_class := class<allocates>(interface_that_has_allocates_constructor):
         Y:int
 
     MyGlobalVariable:global_sub_class = global_sub_class{ Y := 1}
@@ -40,9 +53,90 @@ assert_valid:
 assert_valid:
     A:int = 0
 
-# Test that trying to instantiate a class with the `<varies>` effect in its constructor won't work
+# Test that trying to instantiate a class with the `<allocates>` effect in its constructor won't work
 # in the constructor of another class with a more restricted effect.
-assert_semantic_error(3512):
+
+assert_link_error(9003):
     c0 := class<computes>{Subobject:c1}
     c1 := class<allocates>{var X:int=0}
     C0:c0 = c0{Subobject:=c1{}}
+
+# allocates is allowed at module scope:
+# - instances of unique classes can be created at module scope.
+# - actually allocating a variable at module scope produces a runtime error.
+
+unique_allocates_class := class<unique><allocates>{}
+UniqueClassInstance1:unique_allocates_class = unique_allocates_class{}
+UniqueClassInstance2:unique_allocates_class = unique_allocates_class{}
+
+assert. UniqueClassInstance1  = UniqueClassInstance1
+assert. UniqueClassInstance2  = UniqueClassInstance2
+assert. UniqueClassInstance1 <> UniqueClassInstance2
+
+assert_link_error(9003):
+    c0 := class<allocates>{Subobject:c1=c1{}}
+    c1 := class<allocates>{var X:int=0}
+    C0:c0 = c0{}
+
+assert_link_error(9003):
+    F()<allocates>:void={var X:int = 0}
+    Y:void = UnsafeCast(F, type{_()<converges>:void})()
+
+assert_link_error(verse_vm_only{9003}): # Doesn't produce an error on the BPVM because BPVM doesn't run blocks on global instances of classes.
+    c0 := class<allocates>{block{var X:int = 0}}
+    C0:c0 = c0{}
+
+assert_link_error(verse_vm_only{9003}): # Doesn't produce an error on the BPVM because BPVM doesn't run blocks on global instances of classes.
+    F()<allocates>:c1=c1{}
+    c0 := class<allocates>{block{F()}}
+    c1 := class<allocates>{var X:int=0}
+    Submodule := module:
+        C0:c0 = c0{}
+
+assert_link_error(verse_vm_only{9003}): # Doesn't produce an error on the BPVM because BPVM doesn't run blocks on global instances of classes.
+    F()<allocates>:int=
+        var X:int = 0
+        return 1
+    c0 := class<allocates>{block{F()}}
+    Submodule := module:
+        C0:c0 = c0{}
+
+assert_valid:
+    F(Condition:logic)<allocates>:int=
+        if(Condition?):
+            var X:int = 0
+        return 1
+    c0 := class<allocates>{block{F(false)}}
+    Submodule := module:
+        C0:c0 = c0{}
+
+assert_link_error(verse_vm_only{9003}): # Doesn't produce an error on the BPVM because BPVM doesn't run blocks on global instances of classes.
+    F(Condition:logic)<allocates>:int=
+        if(Condition?):
+            var X:int = 0
+        return 1
+    c0 := class<allocates>{block{F(true)}}
+    Submodule := module:
+        C0:c0 = c0{}
+
+### make sure that all module-toplevel-instantiated classes are represented as UObject's
+my_class<public> := class<computes>:
+    X:int = 23
+    Y:float = 23.4
+
+MyModule<public> := module:
+    A<public>:my_class = my_class{}
+
+    InnerModule<public> := module:
+        B<public>:my_class = my_class{}
+
+    SomeArray<public>:[]my_class = array{my_class{}}
+
+assert:
+    IsUObject[MyModule.A]
+    IsUObject[MyModule.InnerModule.B]
+    IsUObject[MyModule.SomeArray[0]]
+
+    if (GetCVarUObjectProbability() = 0.0):
+        T := my_class{}
+        not IsUObject[T]

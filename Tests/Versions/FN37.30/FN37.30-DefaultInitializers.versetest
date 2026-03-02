@@ -1,33 +1,52 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# <allocates> in initializer
 assert_valid:
     vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3720):
         snippet:
             my_class := class:
-                # <allocates> in initializer
                 X:[]int = array:
                     var Y:int = 3
 
-                # <reads> in initializer
-                Z:int = block:
-                    var W:int = 5
-                    W
-
-                # Declaration expressions in initializers are lifted to class scope
-                F():int = Y
-
-assert_semantic_error(3512, 3512, 3506):
+assert_semantic_error(3512):
     vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3730):
         snippet:
             my_class := class:
-                # <allocates> in initializer
                 X:[]int = array:
                     var Y:int = 3
 
-                # <reads> in initializer
-                # NOTE: This cannot currently be rejected because we also use
-                # <reads> for things like floating point math.
+# <allocates><reads> in initializer
+# NOTE: This cannot currently be rejected because we also use
+# <reads> for things like floating point math.
+assert_valid:
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3720):
+        snippet:
+            my_class := class:
                 Z:int = block:
                     var W:int = 5
                     W
 
-                # Declaration expressions in initializers are lifted to class scope
+assert_semantic_error(3512):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3730):
+        snippet:
+            my_class := class:
+                Z:int = block:
+                    var W:int = 5
+                    W
+
+# Variables in class initializers behaved as if they were at class scope, but should behave as though they are in some local scope in the class's constructor.
+assert_valid:
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3720):
+        snippet:
+            my_class := class:
+                X:[]int = array:
+                    Y:int = 3
+                F():int = Y
+
+assert_semantic_error(3506):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3730):
+        snippet:
+            my_class := class:
+                X:[]int = array:
+                    Y:int = 3
                 F():int = Y

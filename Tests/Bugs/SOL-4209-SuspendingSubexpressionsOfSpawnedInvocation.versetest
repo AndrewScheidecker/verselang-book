@@ -1,5 +1,6 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
+bp_vm_only {
 # Suspension in the callee subexpression
 assert_semantic_error(3512):
     F0()<suspends>:void={}
@@ -19,3 +20,31 @@ assert_semantic_error(3512):
     F0(:c)<suspends>:void={}
     F1()<suspends>:c=c{}
     F2():void=spawn{F0(F1())}
+}
+verse_vm_only {
+Module0 := module:
+    F0()<suspends>:void={}
+    F1()<suspends>:type{_()<suspends>:void}=F0
+    F2<public>():void=spawn{F1()()}
+
+assert:
+    Module0.F2()
+
+Module1 := module:
+    c := class:
+        F0()<suspends>:void={}
+    F1()<suspends>:c=c{}
+    F2<public>():void=spawn{F1().F0()}
+
+assert:
+    Module1.F2()
+
+Module2 := module:
+    c := class{}
+    F0(:c)<suspends>:void={}
+    F1()<suspends>:c=c{}
+    F2<public>():void=spawn{F0(F1())}
+
+assert:
+    Module2.F2()
+}

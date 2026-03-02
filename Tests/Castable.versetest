@@ -573,3 +573,33 @@ Canonicalize := module:
 
 assert:
     Canonicalize.G(Canonicalize.class1{}, Canonicalize.I).Data = 1
+
+assert_valid:
+    class1 := class {}
+    class2 := class<castable><concrete>(class1) {}
+    F(t:concrete_subtype(u) where u:castable_subtype(class1)):void = {}
+    G():void = F(class2)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class<castable>(class1) {}
+    F(t:concrete_subtype(u) where u:castable_subtype(class1)):void = {}
+    G():void = F(class2)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class<concrete>(class1) {}
+    F(t:concrete_subtype(u) where u:castable_subtype(class1)):void = {}
+    G():void = F(class2)
+
+assert_valid:
+    class1 := class {}
+    class2 := class<castable><concrete>(class1) {}
+    class3 := class<internal>:
+        Castable:castable_subtype(class1)
+        Concrete:concrete_subtype(class1)
+    MakeClass3<constructor>(t:castable_subtype(u) where u:concrete_subtype(class1)) := class3:
+        Castable := t
+        Concrete := t
+    Main():void =
+        X := MakeClass3(class2)

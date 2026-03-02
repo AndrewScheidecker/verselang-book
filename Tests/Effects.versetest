@@ -295,11 +295,14 @@ assert_semantic_error(3565){ G()<computes>:void={}; F()<varies>:void=G() }
 # The decides effect set includes the computes effect.
 assert_valid { G()<computes>:void={}; F()<decides>:void=G()}
 
-# The converges effect is only allowed on native functions.
+# The converges effect is only allowed on native and abstract functions.
 assert_valid               { F<native>         ()<converges>:void }
 assert_semantic_error(3565){ F                 ()<converges>:void={} }
 assert_semantic_error(3565){ F<native_callable>()<converges>:void={} }
 assert_semantic_error(3565){ c:=class<converges>{} }
+
+assert_valid               { c:=class<abstract>{F()<converges>:void} }
+assert_valid               { t:=type{F()<converges>:void} }
 
 # Test declaring different combinations of effects on classes/structs.
 assert_valid      { c := class<computes>{} }

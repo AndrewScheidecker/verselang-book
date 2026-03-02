@@ -1,0 +1,28 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3532):
+    F(X:int)<closed><computes>:int = X
+    F(X:float)<computes>:float = X
+
+assert_semantic_error(3532):
+    F(X:float)<computes>:float = X
+    F(X:int)<closed><computes>:int = X
+
+assert_semantic_error(3532):
+    A := module:
+        F<public>(X:int)<closed><computes>:int = X
+    F<public>(X:float)<closed><computes>:float = X
+
+assert_valid:
+    A := module:
+        F<public>(X:int)<closed><computes>:int = X
+    B := module:
+        F<public>(X:float)<closed><computes>:float = X
+
+assert_semantic_error(3532, 3532):
+    A := module:
+        F<public>(X:int)<closed><computes>:int = X
+    B := module:
+        F<public>(X:float)<closed><computes>:float = X
+    using {A}
+    using {B}

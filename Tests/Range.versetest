@@ -43,7 +43,7 @@ rangetest1():int =
 assert{rangetest1() = 3}
 
 # Test a ranged for with a range stored in variable
-assert_semantic_error(3552):
+assert_semantic_error(3552, 3524, 3509):
     rangetest2():int =
         var sum:int = 0
         Range:=0..3

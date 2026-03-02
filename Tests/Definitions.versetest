@@ -80,7 +80,7 @@ assert:
     DataNaN = NaN
 
 
-verse_vm_only
+lenient_only
 {
 M2 := module:
     D<public>:int = M1.D

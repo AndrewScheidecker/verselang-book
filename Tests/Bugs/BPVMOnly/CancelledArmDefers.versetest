@@ -1,0 +1,262 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# VM DIFFERENCE: Defers in cancelled concurrent arms not executed
+#
+# BPVM does not execute defers registered in race/rush arms when those arms
+# are cancelled. VVM correctly unwinds and executes all defers.
+#
+# Root cause (BPVM): task::Cancel() in VerseTask.cpp only executes the parent's
+# cancel state, not the cancelled task's own defers stored in _UserData.
+#
+# This is a serious semantic bug - defers are guaranteed cleanup that must run.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Concurrency }
+
+############################################
+# Helper functions
+Log(Msg:string): void              = CoroUtils.LogEvent(Msg)
+GetLogStr()<transacts>: string     = return CoroUtils.GetEventLogString()
+Wait(Ticks:int)<suspends>: void    = CoroUtils.WaitTicks(Ticks)
+Tick(Ticks:int): void              = CoroUtils.Tick(Ticks)
+
+# Assert helper that prints actual vs expected on failure
+AssertLogStr(TestName:string, Expected:string, ?BPVMExpected:string = Expected)<transacts><decides>: void =
+    Actual := GetLogStr()
+    verse_vm_only:
+        if (Actual <> Expected):
+            DebugPrint("{TestName} FAIL (VVM): Expected '{Expected}' but got '{Actual}'")
+            false?
+    bp_vm_only:
+        if (Actual <> BPVMExpected):
+            DebugPrint("{TestName} FAIL (BPVM): Expected '{BPVMExpected}' but got '{Actual}'")
+            false?
+
+
+############################################
+# Test 1: Single defer in losing race arm
+#
+# VVM ("ABC,WEdZ,"): Losing arm's code E runs, then defer d, then race completes Z
+# BPVM ("ABC,WZE,"): Race completes Z, then E runs, defer d NEVER RUNS
+#
+TestRaceDeferInLosingArm()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            defer:
+                Log("d")
+            Log("C")
+            Wait(1)
+            Event.Signal()
+            Log("E")
+            Wait(1)
+            Log("X")
+    Log("Z")
+
+assert:
+    spawn{TestRaceDeferInLosingArm()}
+    Tick(2)
+    AssertLogStr["TestRaceDeferInLosingArm", "ABC,WEdZ,", ?BPVMExpected := "ABC,WZE,"]
+
+
+############################################
+# Test 2: Defers in both race arms
+#
+# VVM ("ABC,Wd1Ed2Z,"): Winner's defer d1 runs, losing arm code E, losing defer d2, Z
+# BPVM ("ABC,Wd1ZE,"): Winner's defer d1 runs, Z, E runs, d2 NEVER RUNS
+#
+TestRaceDeferInBothArms()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            defer:
+                Log("d1")
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            defer:
+                Log("d2")
+            Log("C")
+            Wait(1)
+            Event.Signal()
+            Log("E")
+            Wait(1)
+            Log("X")
+    Log("Z")
+
+assert:
+    spawn{TestRaceDeferInBothArms()}
+    Tick(2)
+    AssertLogStr["TestRaceDeferInBothArms", "ABC,Wd1Ed2Z,", ?BPVMExpected := "ABC,Wd1ZE,"]
+
+
+############################################
+# Test 3: Multiple nested defers in losing arm
+#
+# VVM ("ABCD,WEd3d2d1Z,"): All 3 defers run in LIFO order
+# BPVM ("ABCD,WZE,"): ALL defers missing - none run
+#
+TestRaceNestedDefersInLosingArm()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            defer:
+                Log("d1")
+            Log("C")
+            block:
+                defer:
+                    Log("d2")
+                Log("D")
+                block:
+                    defer:
+                        Log("d3")
+                    Wait(1)
+                    Event.Signal()
+                    Log("E")
+                    Wait(1)
+                    Log("X")
+    Log("Z")
+
+assert:
+    spawn{TestRaceNestedDefersInLosingArm()}
+    Tick(2)
+    AssertLogStr["TestRaceNestedDefersInLosingArm", "ABCD,WEd3d2d1Z,", ?BPVMExpected := "ABCD,WZE,"]
+
+
+############################################
+# Test 4: Defer registered after Wait (still in cancelled arm)
+#
+# VVM ("ABC,DWEFGdZ,"): Immediate code E,F,G runs, then defer d, then Z
+# BPVM ("ABC,DWZEFG,"): Z completes race, E,F,G run, d NEVER RUNS
+#
+TestDeferOrderRelativeToSignal()<suspends>: void =
+    Log("A")
+    Event := event(){}
+    race:
+        block:
+            Log("B")
+            Event.Await()
+            Log("W")
+        block:
+            Log("C")
+            Wait(1)
+            defer:
+                Log("d")
+            Log("D")
+            Event.Signal()
+            Log("E")
+            Log("F")
+            Log("G")
+            Wait(1)
+            Log("X")
+    Log("Z")
+
+assert:
+    spawn{TestDeferOrderRelativeToSignal()}
+    Tick(2)
+    AssertLogStr["TestDeferOrderRelativeToSignal", "ABC,DWEFGdZ,", ?BPVMExpected := "ABC,DWZEFG,"]
+
+
+############################################
+# Test 5: Nested race - inner losing arm defers
+#
+# VVM: All defers run (dI1, dI2, dO1, dO2)
+# BPVM: Only winner defers run, losing arms' defers (dI2, dO2) missing
+#
+TestNestedRaceInnerWinsFirst()<suspends>: void =
+    Log("A")
+    OuterEvent := event(){}
+    InnerEvent := event(){}
+    race:
+        block:
+            defer:
+                Log("dO1")
+            Log("O1")
+            OuterEvent.Await()
+            Log("O1W")
+        block:
+            defer:
+                Log("dO2")
+            Log("O2")
+            race:
+                block:
+                    defer:
+                        Log("dI1")
+                    Log("I1")
+                    InnerEvent.Await()
+                    Log("I1W")
+                block:
+                    defer:
+                        Log("dI2")
+                    Log("I2")
+                    Wait(1)
+                    InnerEvent.Signal()
+                    Log("I2S")
+                    Wait(1)
+                    Log("I2X")
+            Log("O2IR")
+            OuterEvent.Signal()
+            Log("O2S")
+            Wait(1)
+            Log("O2X")
+    Log("Z")
+
+assert:
+    spawn{TestNestedRaceInnerWinsFirst()}
+    Tick(3)
+    AssertLogStr["TestNestedRaceInnerWinsFirst", "AO1O2I1I2,I1WdI1I2SdI2O2IRO1WdO1O2SdO2Z,,", ?BPVMExpected := "AO1O2I1I2,I1WdI1O2IRO1WdO1ZO2SI2S,,"]
+
+
+############################################
+# Test 6: Rush background defer when outer race arm loses
+#
+# VVM: Rush background defer dB runs, losing arm defer dR runs
+# BPVM: dB missing, dR runs but after Z
+#
+TestRushInsideLosingRaceArm()<suspends>: void =
+    Log("A")
+    WinEvent := event(){}
+    race:
+        block:
+            Log("W")
+            WinEvent.Await()
+            Log("WIN")
+        block:
+            defer:
+                Log("dR")
+            Log("R")
+            rush:
+                block:
+                    Log("M")
+                    Wait(1)
+                    Log("ME")
+                block:
+                    defer:
+                        Log("dB")
+                    Log("B")
+                    Wait(1)
+                    WinEvent.Signal()
+                    Log("BS")
+                    Wait(1)
+                    Log("BX")
+            Log("RUSH_DONE")
+            Wait(1)
+            Log("RX")
+    Log("Z")
+
+assert:
+    spawn{TestRushInsideLosingRaceArm()}
+    Tick(3)
+    AssertLogStr["TestRushInsideLosingRaceArm", "AWRMB,MERUSH_DONEWINBSdBdRZ,,", ?BPVMExpected := "AWRMB,MERUSH_DONEWINdRZBS,,"]

@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid               {vpackage(A,/Verse.org/A,?Scope:=PublicAPI,?UploadedAtFNVersion:=3999){snippet{c0(t:type) := class{X<final>:int = 0}; c1 := class(c0(int)){X<override>:int = 1}}}}
+assert_semantic_error(3568){vpackage(A,/Verse.org/A,?Scope:=PublicAPI,?UploadedAtFNVersion:=4000){snippet{c0(t:type) := class{X<final>:int = 0}; c1 := class(c0(int)){X<override>:int = 1}}}}

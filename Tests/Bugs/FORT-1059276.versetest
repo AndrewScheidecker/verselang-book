@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    c := class{}
+    i := interface<castable>:
+    Foo(t:castable_subtype(c), Xs:[]t)<transacts>:void =
+        for(X : Xs; Y:c = X; i[Y]):
+            X
+
+assert_semantic_error(3509):
+    c := class{}
+    i := interface<castable>:
+    Foo(t:castable_subtype(c), Xs:[]t)<transacts>:void =
+        for(X : Xs; i[X]):
+            X

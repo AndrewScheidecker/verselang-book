@@ -8,9 +8,9 @@ using { /Verse.org/Tests/VerseTestScriptCmd }
 verse_vm_todo
 {
 
-i1 := interface{}
-i2 := interface{}
-i3 := interface(i1){}
+i1 := interface<computes>{}
+i2 := interface<computes>{}
+i3 := interface<computes>(i1){}
 c := class<computes>(i1){}
 d := class<computes>(c){}
 e := class<computes>(d,i2){}

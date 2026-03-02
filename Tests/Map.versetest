@@ -189,19 +189,8 @@ assert_semantic_error(3509):
     c := class:
         var Map:[child_class_a]child_class_b = map{child_class_b{}=>child_class_b{}}
 
-bp_vm_only {
-assert_semantic_error(3509, 3509):
-    super_class := class<computes><unique><allocates>{}
-    child_class_a := class<computes><allocates>(super_class){}
-    child_class_b := class<computes><allocates>(super_class){}
-    c := class:
-        var Map:[child_class_a]child_class_b = map{}
-        Foo(Key:child_class_b, Value:child_class_b)<decides>:void=
-            set Map[Key] = Value
-}
 
-verse_vm_only {
-assert_semantic_error(3509):
+assert_semantic_error(bp_vm_only{3509, 3509}; verse_vm_only{3509}):
     super_class := class<computes><unique><allocates>{}
     child_class_a := class<computes><allocates>(super_class){}
     child_class_b := class<computes><allocates>(super_class){}
@@ -209,7 +198,6 @@ assert_semantic_error(3509):
         var Map:[child_class_a]child_class_b = map{}
         Foo(Key:child_class_b, Value:child_class_b)<decides>:void=
             set Map[Key] = Value
-}
 
 assert_semantic_error(3509):
     super_class := class<computes><unique><allocates>{}
@@ -467,3 +455,20 @@ assert_semantic_error(3509):
         var Map:[player]data = map{Player => Data}
         set Map[Agent].X = 5
         Map[Agent].X = 5
+
+# Test setting map values with keys that need coercion.
+assert:
+    var ObjectMap : [comparable]int = map{}
+    set ObjectMap[0] = 1
+
+assert:
+    var ObjectMap : weak_map(comparable,int) = map{}
+    set ObjectMap[0] = 1
+
+assert:
+    var ObjectMap : [?comparable]int = map{}
+    set ObjectMap[option{1}] = 1
+
+assert:
+    var ObjectMap : [tuple(comparable, comparable)]int = map{}
+    set ObjectMap[1,2] = 1

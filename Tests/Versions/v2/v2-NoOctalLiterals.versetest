@@ -1,0 +1,171 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# In v0-v1, non-hex int literals with a leading 0 are interpreted as octal.
+# Warning 2307 is produced if the octal interpretation differs from decimal.
+# In v2, leading zeros are simply ignored and the literal is decimal.
+
+# Cases where octal and decimal interpretations differ - warning in v0-v1, valid in v2
+
+# 010: octal 8 vs decimal 10
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 8, _X <= 8} = 010}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 8, _X <= 8} = 010}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 10, _X <= 10} = 010}}}
+
+# 0123: octal 83 vs decimal 123
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 83, _X <= 83} = 0123}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 83, _X <= 83} = 0123}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 123, _X <= 123} = 0123}}}
+
+# 0777: octal 511 vs decimal 777
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 511, _X <= 511} = 0777}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 511, _X <= 511} = 0777}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 777, _X <= 777} = 0777}}}
+
+# 00001000: octal 512 vs decimal 1000
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 512, _X <= 512} = 00001000}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 512, _X <= 512} = 00001000}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 1000, _X <= 1000} = 00001000}}}
+
+# Cases where octal and decimal are the same value - no warning in any version
+
+# 01: octal 1 = decimal 1
+assert_valid{vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 1, _X <= 1} = 01}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 1, _X <= 1} = 01}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 1, _X <= 1} = 01}}}
+
+# 07: octal 7 = decimal 7
+assert_valid{vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 7, _X <= 7} = 07}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 7, _X <= 7} = 07}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 7, _X <= 7} = 07}}}
+
+# 00: octal 0 = decimal 0
+assert_valid{vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 0, _X <= 0} = 00}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 0, _X <= 0} = 00}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 0, _X <= 0} = 00}}}
+
+# ============================================================================
+# Verify actual numeric interpretation using tuple indices.
+# We can't run runtime asserts with vpackage macros that override VerseVersion,
+# so we use tuple indexing (which is checked at compile time) to verify the
+# actual value. Tuple index out of range produces error 3536.
+# ============================================================================
+
+# 9-element tuple has valid indices 0-8.
+# 010 as octal = 8 (valid), 010 as decimal = 10 (out of bounds).
+# v0-v1: index 8 is valid (with warning 2307), v2: index 10 is out of bounds (error 3536)
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1,2,3,4,5,6,7,8); X:=T(010)}}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1,2,3,4,5,6,7,8); X:=T(010)}}}}
+assert_semantic_error(3536){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1,2,3,4,5,6,7,8); X:=T(010)}}}}
+
+# Digits 8 and 9 are not valid octal digits. In v0-v1, strtoull stops parsing
+# at the invalid digit, so 08 parses as 0, 018 as 1 (octal 01), 0789 as 7 (octal 07).
+# In v2, these are simply decimal literals.
+
+# 08: v0-v1 parses as 0, v2 parses as 8
+# 2-element tuple (indices 0-1 valid), so v0-v1 succeeds (with warning), v2 fails
+# Note: (0) is just grouping, not a tuple, so we need at least 2 elements.
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1); X:=T(08)}}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1); X:=T(08)}}}}
+assert_semantic_error(3536){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1); X:=T(08)}}}}
+
+# 09: v0-v1 parses as 0, v2 parses as 9
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1); X:=T(09)}}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1); X:=T(09)}}}}
+assert_semantic_error(3536){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1); X:=T(09)}}}}
+
+# 018: v0-v1 parses as 1 (octal 01, stops at 8), v2 parses as 18
+# 2-element tuple (indices 0-1 valid), so v0-v1 succeeds (with warning), v2 fails
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1); X:=T(018)}}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1); X:=T(018)}}}}
+assert_semantic_error(3536){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1); X:=T(018)}}}}
+
+# 0789: v0-v1 parses as 7 (octal 07, stops at 8), v2 parses as 789
+# 8-element tuple (indices 0-7 valid), so v0-v1 succeeds (with warning), v2 fails
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1,2,3,4,5,6,7); X:=T(0789)}}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1,2,3,4,5,6,7); X:=T(0789)}}}}
+assert_semantic_error(3536){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1,2,3,4,5,6,7); X:=T(0789)}}}}
+
+# f in a 0-prefixed non-hex integer literal should be interpreted as a unit or f16/f32/f64 suffix.
+assert_syntax_error(3109){"F():void=\{T:=(0,1); X:=T(00f)\}"}
+
+assert_semantic_error(3509){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1); X:=T(00f64)}}}}
+assert_semantic_error(3509){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1); X:=T(00f64)}}}}
+assert_semantic_error(3509){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1); X:=T(00f64)}}}}
+
+# e in a 0-prefixed non-hex integer literal should cause it to be interpreted as a floating point number.
+assert_semantic_error(3509){vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={T:=(0,1); X:=T(00e0)}}}}
+assert_semantic_error(3509){vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={T:=(0,1); X:=T(00e0)}}}}
+assert_semantic_error(3509){vpackage(P0, /A, ?VerseVersion:=2){snippet{F():void={T:=(0,1); X:=T(00e0)}}}}
+
+# ============================================================================
+# Large octal literals where the decimal interpretation overflows uint64.
+# In v0-v1, these should be interpreted as octal.
+# In v2, these should produce error 3555 (decimal overflow).
+# ============================================================================
+
+# 01777777777777777777777 = ULLONG_MAX (18446744073709551615) in octal.
+# Octal value exceeds INT64_MAX, so error 3555 is expected in all versions.
+assert_semantic_error(3555){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:int = 01777777777777777777777}}}
+assert_semantic_error(3555){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:int = 01777777777777777777777}}}
+assert_semantic_error(3555){vpackage(P0, /A, ?VerseVersion:=2){snippet{X:int = 01777777777777777777777}}}
+
+# 0777777777777777777777 = INT64_MAX (9223372036854775807) in octal (21 sevens).
+# In v0-v1, this is a valid int literal (with warning 2307).
+# In v2, decimal interpretation overflows, so error 3555.
+# Use refinement type to verify the actual value equals INT64_MAX.
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 9223372036854775807, _X <= 9223372036854775807} = 0777777777777777777777}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 9223372036854775807, _X <= 9223372036854775807} = 0777777777777777777777}}}
+assert_semantic_error(3555){vpackage(P0, /A, ?VerseVersion:=2){snippet{X:int = 0777777777777777777777}}}
+
+# 0400000000000000000000 = 2^62 (4611686018427387904) in octal.
+# In v0-v1, this is a valid int literal (with warning 2307).
+# In v2, decimal interpretation overflows, so error 3555.
+# Use refinement type to verify the actual value equals 2^62.
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 4611686018427387904, _X <= 4611686018427387904} = 0400000000000000000000}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 4611686018427387904, _X <= 4611686018427387904} = 0400000000000000000000}}}
+assert_semantic_error(3555){vpackage(P0, /A, ?VerseVersion:=2){snippet{X:int = 0400000000000000000000}}}
+
+# ============================================================================
+# Negative octal literals.
+# ============================================================================
+
+# -010: octal -8 vs decimal -10
+# Use refinement type to verify the actual value equals -8 in v0-v1, -10 in v2.
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= -8, _X <= -8} = -010}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= -8, _X <= -8} = -010}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= -10, _X <= -10} = -010}}}
+
+# -01000000000000000000000 = -2^63 = INT64_MIN (-9223372036854775808) in octal.
+# This is the most negative valid int64 value.
+# In v0-v1, this is valid (with warning 2307).
+# In v2, decimal interpretation overflows, so error 3555.
+# Use refinement type to verify the actual value equals INT64_MIN.
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= -9223372036854775808, _X <= -9223372036854775808} = -01000000000000000000000}}}
+assert_semantic_error(2307){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= -9223372036854775808, _X <= -9223372036854775808} = -01000000000000000000000}}}
+assert_semantic_error(3555){vpackage(P0, /A, ?VerseVersion:=2){snippet{X:int = -01000000000000000000000}}}
+
+# -01000000000000000000001 = -(2^63 + 1) in octal, exceeds INT64_MIN magnitude.
+# Error 3555 in all versions (value out of range for int64).
+assert_semantic_error(2307, 3555){vpackage(P0, /A, ?VerseVersion:=0){snippet{X:int = -01000000000000000000001}}}
+assert_semantic_error(2307, 3555){vpackage(P0, /A, ?VerseVersion:=1){snippet{X:int = -01000000000000000000001}}}
+assert_semantic_error(3555)      {vpackage(P0, /A, ?VerseVersion:=2){snippet{X:int = -01000000000000000000001}}}
+
+# ============================================================================
+# Hex literals should be unaffected by version.
+# Use refinement types to verify actual values.
+# ============================================================================
+
+# 0x10 = 16
+assert_valid{vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 16, _X <= 16} = 0x10}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 16, _X <= 16} = 0x10}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 16, _X <= 16} = 0x10}}}
+
+# 0x7FFFFFFFFFFFFFFF = INT64_MAX
+assert_valid{vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= 9223372036854775807, _X <= 9223372036854775807} = 0x7FFFFFFFFFFFFFFF}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= 9223372036854775807, _X <= 9223372036854775807} = 0x7FFFFFFFFFFFFFFF}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= 9223372036854775807, _X <= 9223372036854775807} = 0x7FFFFFFFFFFFFFFF}}}
+
+# -0x8000000000000000 = INT64_MIN
+assert_valid{vpackage(P0, /A, ?VerseVersion:=0){snippet{X:type{_X:int where _X >= -9223372036854775808, _X <= -9223372036854775808} = -0x8000000000000000}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=1){snippet{X:type{_X:int where _X >= -9223372036854775808, _X <= -9223372036854775808} = -0x8000000000000000}}}
+assert_valid{vpackage(P0, /A, ?VerseVersion:=2){snippet{X:type{_X:int where _X >= -9223372036854775808, _X <= -9223372036854775808} = -0x8000000000000000}}}

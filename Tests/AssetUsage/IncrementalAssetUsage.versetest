@@ -1,0 +1,179 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_used_assets<depends_on_library>:
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?PackageType:=Assets, ?Scope:=InternalUser, ?Dependencies:=("Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Native }
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+
+            Asset_asset<epic_internal>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/Asset")
+
+            CircularA<epic_internal> := class:
+                AssetA:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CircularA_member_AssetA")
+                GetAssetB<epic_internal>()<transacts>:asset = CircularB{}.AssetB
+                GetUniqueAsset<epic_internal>()<transacts>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CircularA_memberfunc_retval_GetUniqueAsset")
+
+            CircularB<epic_internal> := class:
+                AssetB:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CircularB_member_AssetB")
+                GetAssetA<epic_internal>()<transacts>:asset = CircularA{}.AssetA
+                GetUniqueAsset<epic_internal>()<transacts>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CircularB_memberfunc_retval_GetUniqueAsset")
+
+            ClassWithArrayOfAssets<epic_internal> := class:
+                var SomeArray<public>:[]asset = array:
+                    MakeAsset(asset, "/ClassWithArrayOfAssets/SomeArray/Element0")
+                    Asset_asset
+                    ModuleBaz.Baz_asset
+
+            ModuleBaz<epic_internal> := module:
+                Baz<epic_internal> := class(asset):
+                    block:
+                        SetPath("/TestAssetPath/ModuleBaz/Baz/block/SetPath")
+                Baz_asset<epic_internal>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/ModuleBaz/Asset_asset")
+
+            Bar<epic_internal> := class(asset):
+                block: 
+                    SetPath("/TestAssetPath/Bar/block/SetPath")
+
+            Foo<epic_internal> := class:
+                FooAsset<epic_internal>:(/Verse.org/Tests/VerseTestScriptCmd:)asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/Foo/FooAsset")
+
+                A<epic_internal>():void = {MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/Foo/A")}
+                B():void = { MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/Foo/B") }
+
+            # Intentionally out of order
+            LooseFuncB()<transacts>:void = { LooseFuncC() }
+            LooseFuncC()<transacts>:void = { MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/LooseFuncC") }
+            LooseFuncA()<transacts>:void = { LooseFuncB() }
+
+            Car<epic_internal> := class:
+                B:Bar = Bar{}
+                CarFunc():void = { LooseFuncA() }
+                            
+            Dar<epic_internal> := class(Car):
+
+            CaseAssets<epic_internal> := module:
+                Asset1<epic_internal>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CaseAssets/Asset1")
+                Asset2<epic_internal>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CaseAssets/Asset2")
+                Asset3<epic_internal>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CaseAssets/Asset3")
+                AssetDefault<epic_internal>:asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/CaseAssets/AssetDefault")
+
+            entity<epic_internal>:=class((/Verse.org/Tests/VerseTestScriptCmd:)asset):
+            mesh_component<epic_internal>:=class((/Verse.org/Tests/VerseTestScriptCmd:)asset):
+
+            # Requires a real mounted path when compiling otherwise will generate an error
+            # @import_as("/TestAssetPath/EntityRef_Prefab/import_as.GeneratedType_C")
+            EntityRef_Prefab<epic_internal> := class<final><concrete>(entity){}
+            EntityRef_Prefab_asset<epic_internal>:(/Verse.org/Tests/VerseTestScriptCmd:)asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/EntityRef_Prefab_asset")
+
+            SM_Remesh_Bunny<epic_internal> := class<final><epic_internal>(mesh_component):
+                Mesh:(/Verse.org/Tests/VerseTestScriptCmd:)asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/Mesh/SM_Remesh_Bunny")
+                var WorldGridMaterial<epic_internal>:(/Verse.org/Tests/VerseTestScriptCmd:)asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/SM_Remesh_Bunny/WorldMaterialGrid")
+            SM_Remesh_Bunny_asset<epic_internal>:(/Verse.org/Tests/VerseTestScriptCmd:)asset = MakeAsset((/Verse.org/Tests/VerseTestScriptCmd:)asset, "/TestAssetPath/SM_Remesh_Bunny_asset")
+    expected_used_assets:= array{} # Asset packages are not Content packages so their compilation has no consequence on used asset dependencies
+
+
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+            using { /Verse.org/VerseTests/AssetUsage }
+            SomeClass := class:
+                MemberVar:asset= Asset_asset # Member data definition
+    expected_used_assets:= array:
+        "/TestAssetPath/Asset"
+
+
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+            using { /Verse.org/VerseTests/AssetUsage }
+            SomeClass := class:
+                MemberVar:asset= Asset_asset # Member data definition
+
+            FuncUsingClassWithAssetMember():void=
+                Asset := Foo{}.FooAsset # Local data definition
+                B := Foo{}.B() # Local data definition
+    expected_used_assets:= array:
+        "/TestAssetPath/Asset",
+        "/TestAssetPath/Foo/FooAsset", 
+        "/TestAssetPath/Foo/B"
+
+
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+            using { /Verse.org/VerseTests/AssetUsage }
+            SomeClass := class:
+                MemberVar:asset= Asset_asset # Member data definition
+
+            FuncUsingClassWithAssetMember():void=
+                A := Foo{}.FooAsset # Local data definition
+            Prop := class:
+                SetMesh(Asset:asset):void = {}
+            
+            # asset used as argument to function not specifically scanned for
+            asset_reflection_reference_class := class: 
+                OnBegin()<suspends> : void =
+                    SpawnPropResult := option{Prop{}}
+                    if (SpawnedProp := SpawnPropResult?):
+                        SpawnedProp.SetMesh(SM_Remesh_Bunny_asset)
+
+            # Asset use in switch cases
+            (InValue:int).GetAsset():asset =
+                case(InValue):
+                    1 => CaseAssets.Asset1
+                    2 => CaseAssets.Asset2
+                    3 => CaseAssets.Asset3
+                    _ => CaseAssets.AssetDefault
+
+            # Local data definition using an array of assets
+            FuncUsingClassWithArrayMemberContainingAssets():void=
+                Local := ClassWithArrayOfAssets{}
+    expected_used_assets:= array:
+        "/TestAssetPath/Asset",
+        "/TestAssetPath/Foo/FooAsset",
+        "/TestAssetPath/SM_Remesh_Bunny_asset",
+        "/TestAssetPath/CaseAssets/Asset1",
+        "/TestAssetPath/CaseAssets/AssetDefault",
+        "/TestAssetPath/CaseAssets/Asset3",
+        "/TestAssetPath/CaseAssets/Asset2",
+        "/ClassWithArrayOfAssets/SomeArray/Element0",
+        "/TestAssetPath/ModuleBaz/Asset_asset"
+
+
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+            using { /Verse.org/VerseTests/AssetUsage }
+            ChildDar<epic_internal> := class(Dar):
+    expected_used_assets:= array:
+        "/TestAssetPath/Bar/block/SetPath"
+
+
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+            using { /Verse.org/VerseTests/AssetUsage }
+            UseCircularB := class:
+                block:
+                    CircularB{}.GetAssetA() # Member data definition
+    expected_used_assets:= array:
+        "/TestAssetPath/CircularA_member_AssetA",
+        "/TestAssetPath/CircularB_member_AssetB"
+
+
+    vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+        snippet:
+            using { /Verse.org/Tests/VerseTestScriptCmd }
+            using { /Verse.org/VerseTests/AssetUsage }
+    expected_used_assets:= array{} # confirm that if we remove all asset usage that we don't use stale results from the compiled package registry
+
+    # Loose function are not followed deeply during asset export creation currently. Is this something we want? 
+    # vpackage(UserCode, /Verse.org/VerseTests/AssetUsage, ?Scope:=InternalUser, ?Dependencies:=("UserCode/Assets", "Engine/VerseTestScriptCmd")):
+    #     snippet:
+    #         using { /Verse.org/Tests/VerseTestScriptCmd }
+    #         using { /Verse.org/VerseTests/AssetUsage }
+    #         ClassGetsAssetThroughFunctionCalls := class:
+    #             block:
+    #                 LooseFuncA()
+    # expected_used_assets:= array:
+    #     "/TestAssetPath/LooseFuncC"

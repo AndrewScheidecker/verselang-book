@@ -13,3 +13,53 @@ assert_roundtrip("hidden {
 assert_roundtrip{'l'}
 assert_roundtrip{true}
 assert_roundtrip{false}
+
+# char8 literals: ASCII printable characters.
+assert_roundtrip{'a'}
+assert_roundtrip{'Z'}
+assert_roundtrip{'0'}
+
+# char8 literals: hexadecimal format (0oXX).
+assert_roundtrip{0o00}
+assert_roundtrip{0o41}
+assert_roundtrip{0o7E}
+assert_roundtrip{0o7F}
+assert_roundtrip{0o80}
+assert_roundtrip{0oFF}
+
+# char8 literals: escaped characters.
+assert_roundtrip{'\n'}
+assert_roundtrip{'\r'}
+assert_roundtrip{'\t'}
+assert_roundtrip{'\\'}
+assert_roundtrip{'\"'}
+assert_roundtrip{'\<'}
+assert_roundtrip{'\>'}
+assert_roundtrip{'\{'}
+assert_roundtrip{'\}'}
+assert_roundtrip{'\~'}
+assert_roundtrip{'\&'}
+assert_roundtrip{'\''}
+
+# char32 literals: Unicode scalar code format (0uXXXXX).
+assert_roundtrip{0u00000}
+assert_roundtrip{0u00041}
+assert_roundtrip{0u00080}
+assert_roundtrip{0u000A0}
+assert_roundtrip{0u007FF}
+assert_roundtrip{0u00800}
+assert_roundtrip{0u0597D}
+assert_roundtrip{0u10000}
+assert_roundtrip{0u1F600}
+assert_roundtrip{0u10FFFF}
+
+# char32 literals: Unicode non-characters.
+assert_roundtrip{0u0FDD0}
+assert_roundtrip{0u0FDEF}
+assert_roundtrip{0u0FFFE}
+assert_roundtrip{0u0FFFF}
+
+# char32 literals: printable Unicode scalars.
+assert_roundtrip{'好'}
+assert_roundtrip{'😀'}
+assert_roundtrip{'🚀'}

@@ -596,4 +596,8 @@ assert:
     spawn:
         StructFreezeField.F(X)
     X.Contents = 1
+
+assert_semantic_error(3512):
+    G()<suspends><reads>:void = {}
+    F()<suspends>:void = await. spawn. G()
 }

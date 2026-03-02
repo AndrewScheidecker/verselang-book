@@ -145,7 +145,7 @@ assert_semantic_error(3532):
     Comp(X:comparable, Y:comparable):void = 42
     Comp(X:Interface, Y:Interface):void = 42
 
-assert_semantic_error(3596): 
+assert_valid: 
     Interface := interface<computes> {
         Method():void
     }
@@ -153,7 +153,7 @@ assert_valid:
     Interface := interface<public> {
         Method():void
     }
-assert_semantic_error(3596): 
+assert_semantic_error(3512): 
     Interface := interface<decides> {
         Method():void
     }

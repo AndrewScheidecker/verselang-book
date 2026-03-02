@@ -2063,3 +2063,80 @@ assert_valid:
             using{/Verse.org/VerseTests/Module}
             G(t:castable_subtype(any)):void = F(t)  # this used to fail prior to fix
             GG(t:type):void = F(t)
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 3800}
+            FooBar<public> := class {}
+            F(:FooBar):void = {}
+    vpackage(P1,/A,?Dependencies:=(P0),?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            FooBar:int = 0
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module0,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            A<public> := module:
+                @available{MinUploadedAtFNVersion := 3800}
+                B<public> := module {}
+    vpackage(P1,/Verse.org/VerseTests/Module1,?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            C<public> := module:
+                B<public> := module:
+                    X<public>:int = 0
+    vpackage(P2,/D,?Dependencies:=(P0, P1),?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            using {/Verse.org/VerseTests/Module0/A}
+            using {/Verse.org/VerseTests/Module1/C}
+            Main():void =
+                B.X
+
+assert_semantic_error(3506):
+    vpackage(P0,/Verse.org/VerseTests/Module0,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            A<public> := module:
+                @available{MinUploadedAtFNVersion := 3800}
+                B<public> := module:
+                    X<public>:int = 0
+    vpackage(P1,/D,?Dependencies:=(P0, P1),?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            using {/Verse.org/VerseTests/Module0/A}
+            Main():void =
+                B.X
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module0,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            A<public> := module:
+                @available{MinUploadedAtFNVersion := 3800}
+                B<public>():void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module1,?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            C<public> := module:
+                B<public> := module:
+                    X<public>:int = 0
+    vpackage(P2,/D,?Dependencies:=(P0, P1),?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            using {/Verse.org/VerseTests/Module0/A}
+            using {/Verse.org/VerseTests/Module1/C}
+            Main():void =
+                B.X
+
+assert_semantic_error(3506):
+    vpackage(P0,/Verse.org/VerseTests/Module0,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            A<public> := module:
+                @available{MinUploadedAtFNVersion := 3800}
+                B<public>():void = {}
+    vpackage(P1,/D,?Dependencies:=(P0, P1),?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3700):
+        snippet:
+            using {/Verse.org/VerseTests/Module0/A}
+            Main():void =
+                B()

@@ -1,5 +1,21 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
+# Empty string tests.
+assert{"" = ""}
+assert{"" = "{}"}
+assert{"" = "{""}"}
+assert{"".Length = 0}
+
+# Strings with embedded null bytes.
+assert{"{0o00}".Length = 1}
+assert{"a{0o00}b".Length = 3}
+assert{"{0o00}{0o00}{0o00}".Length = 3}
+assert{"{0o00}abc".Length = 4}
+assert{"abc{0o00}".Length = 4}
+assert{"hello{0o00}world".Length = 11}
+assert{"{0o00}" <> ""}
+assert{"a{0o00}b" <> "ab"}
+
 # Test the mapping between codepoints and source code characters.
 
 assert{" {0o09} " = " 	 "} # Be careful that this contains an ASCII tab character!
@@ -117,9 +133,26 @@ assert{" {0o7b} " = " \{ "}
 assert{" {0o7d} " = " \} "}
 assert{" {0o7e} " = " \~ "}
 
+# Strings containing only escape sequences.
+assert{"\t\n\r".Length = 3}
+assert{"\\\"\'".Length = 3}
+assert{"\{\}".Length = 2}
+assert{"\<\>".Length = 2}
+
 # Test that curly braces produce a syntax error if they are not escaped.
 assert_syntax_error(3100){"\"\{\""}
 assert_syntax_error(3100){"\"\}\""}
+
+# Invalid escape sequences in strings.
+assert_syntax_error(3100){"\"\\x\""}
+assert_syntax_error(3100){"\"\\z\""}
+assert_syntax_error(3100){"\"\\1\""}
+assert_syntax_error(3100){"\"\\a\""}
+assert_syntax_error(3100){"\"\\b\""}
+
+# Unterminated string.
+assert_syntax_error(3100){"\"unterminated"}
+assert_syntax_error(3100){"\"missing end quote"}
 
 # From https://en.wikipedia.org/wiki/Bidirectional_text: Many computer programs fail to display
 # bidirectional text correctly. For example, the Hebrew name Sarah (שרה) is spelled: sin (ש) (which
@@ -211,3 +244,81 @@ assert{"abc {2, 3, ?Factor:=4} def" = "abc 20 def"}
 
 assert{"abc {"def"} ghi" = "abc def ghi"}
 assert{"abc {'d'}{'e'}{'f'} ghi" = "abc def ghi"}
+
+# Nested string interpolation.
+assert{"{"{1}"}" = "1"}
+assert{"a{"{2}"}b" = "a2b"}
+assert{"{"{"{3}"}"}" = "3"}
+assert{"x{"y{1}z"}w" = "xy1zw"}
+
+# Multiple consecutive interpolations.
+assert{"{1}{2}{3}" = "123"}
+assert{"{1}{2}{3}{4}{5}" = "12345"}
+assert{"{'a'}{'b'}{'c'}" = "abc"}
+assert{"{0}{0}{0}{0}" = "0000"}
+
+# Interpolation edge cases.
+assert{"{""}" = ""}
+assert{"{"a"}" = "a"}
+assert{"{" "}" = " "}
+assert{"{"hello"}" = "hello"}
+
+# UTF-8 encoding tests.
+# string is []char where char is a UTF-8 code unit (byte).
+# Equality is byte-by-byte comparison, no normalization.
+
+# Manually construct multi-byte UTF-8 sequences using char literals.
+# é (U+00E9) = 0xC3 0xA9 in UTF-8
+assert{"{0oC3}{0oA9}" = "é"}
+assert{"{0oC3}{0oA9}".Length = 2}
+
+# 好 (U+597D) = 0xE5 0xA5 0xBD in UTF-8
+assert{"{0oE5}{0oA5}{0oBD}" = "好"}
+assert{"{0oE5}{0oA5}{0oBD}".Length = 3}
+
+# 😀 (U+1F600) = 0xF0 0x9F 0x98 0x80 in UTF-8
+assert{"{0oF0}{0o9F}{0o98}{0o80}" = "😀"}
+assert{"{0oF0}{0o9F}{0o98}{0o80}".Length = 4}
+
+# Precomposed vs decomposed forms are NOT equal (byte comparison).
+# é as precomposed U+00E9 = 0xC3 0xA9 (2 bytes)
+# é as decomposed U+0065 U+0301 = 0x65 0xCC 0x81 (3 bytes)
+assert{"{0oC3}{0oA9}" <> "{0o65}{0oCC}{0o81}"}
+assert{"{0oC3}{0oA9}".Length = 2}
+assert{"{0o65}{0oCC}{0o81}".Length = 3}
+
+# Invalid UTF-8 sequences are allowed since string is just bytes.
+# Lone continuation byte (0x80-0xBF are continuation bytes).
+assert{"{0o80}".Length = 1}
+assert{"{0oBF}".Length = 1}
+
+# Invalid start bytes (0xFE and 0xFF never appear in valid UTF-8).
+assert{"{0oFE}".Length = 1}
+assert{"{0oFF}".Length = 1}
+
+# Truncated multi-byte sequence (0xC3 expects a continuation byte).
+assert{"{0oC3}".Length = 1}
+
+# Overlong encoding of 'A' (U+0041).
+# Valid: 0x41 (1 byte)
+# Overlong: 0xC1 0x81 (2 bytes) - invalid UTF-8 but allowed as bytes
+assert{"{0oC1}{0o81}".Length = 2}
+assert{"{0oC1}{0o81}" <> "A"}
+
+# String with mix of valid ASCII and invalid UTF-8.
+assert{"abc{0oFF}def".Length = 7}
+
+# Zero-width characters (valid UTF-8, but invisible).
+# U+200B (Zero Width Space) = 0xE2 0x80 0x8B
+assert{"{0oE2}{0o80}{0o8B}".Length = 3}
+assert{"a{0oE2}{0o80}{0o8B}b".Length = 5}
+assert{"ab" <> "a{0oE2}{0o80}{0o8B}b"}  # Visually similar but different
+
+# U+200D (Zero Width Joiner) = 0xE2 0x80 0x8D
+assert{"{0oE2}{0o80}{0o8D}".Length = 3}
+
+# U+FEFF (BOM / Zero Width No-Break Space) = 0xEF 0xBB 0xBF
+assert{"{0oEF}{0oBB}{0oBF}".Length = 3}
+
+# Strings that look identical but have different bytes.
+assert{"hello" <> "hell{0oE2}{0o80}{0o8B}o"}  # Hidden zero-width space

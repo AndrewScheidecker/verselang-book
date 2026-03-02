@@ -234,7 +234,7 @@ assert:
     X1.f1() = 1337
 
 # Verify that we can create an array of elements with the same interface, and use the interface 
-can_do_x:=interface:
+can_do_x:=interface<computes>:
     DoX(msg:string):void
 
 do_x_class := class<allocates>(can_do_x):
@@ -266,7 +266,7 @@ assert:
 
 # Verify that we don't re-introduce an error with subtype and interfaces
 assert_semantic_error(3509):
-    can_do_x:=interface{}
+    can_do_x:=interface<computes>{}
     do_x_type := subtype(can_do_x)
     do_x_class := class<computes>(can_do_x) {}
     X:do_x_class=do_x_class{} 

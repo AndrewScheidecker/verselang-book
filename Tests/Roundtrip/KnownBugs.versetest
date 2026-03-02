@@ -189,54 +189,6 @@ F(X:int)<decides>:void =
 }
 
 assert_roundtrip(
-TestChar8s:[]char8 = array:
-    0o00
-    '\n'
-    '\t'
-    '\\'
-    0o80
-    'a'
-    0off
-){
-TestChar8s:[]char8 = array:
-    0o00
-    '\n'
-    '\t'
-    '\\'
-    0o80
-    'a'
-    0oFF
-}
-
-assert_roundtrip(
-TestChar32s:[]char32 = array:
-    0u00000
-    0u00080
-    0u000a0
-    0u00800
-    0u10000
-    '\n'
-    '\t'
-    '\\'
-    '好'
-    '😀'
-    '🚀'
-){
-TestChar32s:[]char32 = array:
-    0u00000
-    0u00080
-    0u000A0
-    0u00800
-    0u10000
-    '\n'
-    '\t'
-    '\\'
-    0u0597D
-    0u1F600
-    0u1F680
-}
-
-assert_roundtrip(
 F(X:int):void =
     1
     2;

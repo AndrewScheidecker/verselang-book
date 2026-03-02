@@ -1,0 +1,364 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Task Cancellation Semantics
+#
+# Tasks are cancelled when their PARENT TASK ends (completes or cancels).
+# Parent/child relationships are determined by concurrency forms, NOT by
+# function/loop/block boundaries.
+#
+# CONCURRENCY FORM DEFINITIONS:
+#
+# spawn: Execute body in a new task with NO PARENT (independent).
+#
+# sync: Execute each arm in a new task, each with CURRENT TASK as parent.
+#       Wait for all these tasks to complete.
+#
+# race: Launch "outer" task (parent = current task). Execute each arm in
+#       "inner" task (parent = outer). Outer waits for first inner.
+#       Current waits for outer. (Losing arms cancelled when outer ends)
+#
+# rush: Execute each arm in a new task, each with CURRENT TASK as parent.
+#       Wait for first task to complete. Other arms continue as children
+#       of current task, cancelled when current task ends.
+#
+# branch: Execute body in a new task with CURRENT TASK as parent.
+#         Don't wait. Cancelled when current task ends.
+#
+# KEY INSIGHT: Rush/branch tasks inherit the CURRENT TASK as parent.
+# Inside a sync arm, "current task" is that sync arm's task.
+# Inside a rush arm, "current task" is that rush arm's task.
+#
+# BPVM BUGS DOCUMENTED IN THIS FILE:
+#
+# Test 1-2: Branch in sync/rush not cancelled
+# - Branch's parent = containing sync/rush arm's task
+# - Should be cancelled when that arm completes
+# - VVM: CORRECT (branch cancelled)
+# - BPVM BUG: Branch continues running
+#
+# Test 3: Rush in sync arm not cancelled
+# - Rush arms' parent = sync arm's task
+# - Should be cancelled when sync arm completes
+# - VVM: CORRECT (R2 cancelled)
+# - BPVM BUG: R2 not cancelled, continues running
+#
+# Test 4-5: Nested rush/race arms not cancelled
+# - Inner rush arms' parent = outer task
+# - VVM: CORRECT (cancelled when parent ends)
+# - BPVM BUG: Not cancelled
+#
+# Test 6: Rush arms in function cancelled too early
+# - Rush arms should continue until enclosing async context ends
+# - VVM: CORRECT (arms continue until spawned function returns)
+# - BPVM BUG: Arms cancelled when containing function returns
+#
+# Test 7: Deep nesting cancellation failures
+# - VVM: CORRECT (proper cascading cancellation)
+# - BPVM BUG: Multiple cancellation failures
+#
+# Related: NestedUpdateStateCorruption.versetest documents a separate BPVM bug
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Concurrency }
+
+############################################
+# Test utilities
+
+Log(Msg:string): void              = CoroUtils.LogEvent(Msg)
+GetLogStr()<transacts>: string     = return CoroUtils.GetEventLogString()
+Wait(Ticks:int)<suspends>: void    = CoroUtils.WaitTicks(Ticks)
+Tick(Ticks:int): void              = CoroUtils.Tick(Ticks)
+
+AssertLogStr(TestName:string, Expected:string, ?BPVMExpected:string = Expected)<transacts><decides>: void =
+    Actual := GetLogStr()
+    verse_vm_only:
+        if (Actual <> Expected):
+            DebugPrint("{TestName} FAIL (VVM): Expected '{Expected}' but got '{Actual}'")
+            false?
+    bp_vm_only:
+        if (Actual <> BPVMExpected):
+            DebugPrint("{TestName} FAIL (BPVM): Expected '{BPVMExpected}' but got '{Actual}'")
+            false?
+
+
+############################################
+# TEST 1: Branch cancelled when containing async context completes
+#
+# A branch started inside a sync arm is cancelled when the sync completes.
+#
+TestBranchInSyncCancelled()<suspends>: void =
+    Log("A")
+    sync:
+        block:
+            branch:
+                Wait(5)
+                Log("B")  # Branch task - should be cancelled when sync completes
+            Wait(1)
+            Log("1")
+        block:
+            Wait(2)
+            Log("2")
+    Log("F")  # Sync completes at tick 2, branch cancelled
+    Wait(4)
+    Log("G")  # Tick 6
+
+assert:
+    spawn{TestBranchInSyncCancelled()}
+    Tick(7)
+    # VVM: B never appears - branch cancelled when sync completed at tick 2
+    # BPVM: B appears at tick 5 - BPVM does NOT cancel branches
+    AssertLogStr["TestBranchInSyncCancelled", "A,1,2F,,,,G,", ?BPVMExpected:="A,1,2F,,,B,G,"]
+
+
+############################################
+# TEST 2: Branch cancelled when containing rush ARM completes
+#
+# Branch's parent = rush arm 1's task (the "current task" inside the arm)
+# Rush arm 2's parent = spawn's task (the "current task" when rush executes)
+#
+# When rush arm 1 completes at tick 1:
+# - Branch should be cancelled (its parent ended)
+# - Rush arm 2 continues (its parent is spawn's task, still running)
+#
+TestBranchInRushCancelled()<suspends>: void =
+    Log("A")
+    rush:
+        block:
+            branch:
+                Wait(5)
+                Log("B")  # Parent = rush arm 1's task, cancelled at tick 1
+            Wait(1)
+            Log("1")      # Rush arm 1 completes here
+        block:
+            Wait(3)
+            Log("2")      # Parent = spawn's task, continues until function returns
+    Log("F")
+    Wait(4)
+    Log("G")
+
+assert:
+    spawn{TestBranchInRushCancelled()}
+    Tick(6)
+    # VVM: B cancelled when rush arm 1 completes, 2 continues (correct)
+    # BPVM BUG: B not cancelled, continues running
+    AssertLogStr["TestBranchInRushCancelled", "A,1F,,2,,G,", ?BPVMExpected:="A,1F,,2,,BG,"]
+
+
+############################################
+# TEST 3: Rush inside sync arm - async context is the sync arm
+#
+# The rush's async context is the sync arm it's contained in.
+# When sync arm 1 completes (after F), the rush background arm R2 should be cancelled.
+#
+# Timeline:
+#   Tick 0: A, R1, R2, D all start
+#   Tick 1: R1 completes, rush "completes", F logged, sync arm 1 COMPLETES
+#           -> R2 should be CANCELLED here (its async context ended)
+#   Tick 2: S2 completes, sync completes, Z logged
+#   Tick 3: R2 would complete here IF NOT cancelled
+#   Tick 4: G logged
+#
+TestNestedAsyncContexts()<suspends>: void =
+    Log("A")
+    sync:
+        block:
+            rush:
+                block:
+                    Wait(1)
+                    Log("R1")  # Rush first arm wins
+                block:
+                    Wait(3)
+                    Log("R2")  # Should be cancelled when sync arm 1 completes
+            Log("F")           # After rush, sync arm 1 completes here
+        block:
+            Wait(2)
+            Log("S2")          # Sync arm 2 completes normally
+    Log("Z")  # After sync completes at tick 2
+    Wait(2)
+    Log("G")
+
+assert:
+    spawn{TestNestedAsyncContexts()}
+    Tick(5)
+    # VVM: R2 does NOT appear - correctly cancelled when sync arm 1 completes
+    # BPVM BUG: R2 appears at tick 3 - not cancelled when parent task ends
+    AssertLogStr["TestNestedAsyncContexts", "A,R1F,S2Z,,G,", ?BPVMExpected:="A,R1F,S2Z,R2,G,"]
+
+
+############################################
+# TEST 4: Nested rush - inner rush arm's parent is outer rush arm
+#
+# Outer rush arm 1 contains an inner rush.
+# Inner rush arms' parent = outer rush arm 1's task.
+# When outer rush arm 1 completes, inner rush background arm I2 should be cancelled.
+#
+# Timeline:
+#   Tick 0: A, O1, I1, I2, O2 all start
+#   Tick 1: I1 completes, inner rush "completes", X logged
+#   Tick 2: Outer rush arm 1 completes (after Wait(2)), F logged
+#           -> I2 should be CANCELLED here (parent = outer arm 1, which completed)
+#   Tick 3: O2 would complete IF NOT cancelled... but O2's parent is spawn's task
+#   Tick 4: I2 would complete IF NOT cancelled
+#   Tick 5: G logged
+#
+TestNestedRush()<suspends>: void =
+    Log("A")
+    rush:
+        block:
+            Log("O1")
+            rush:
+                block:
+                    Wait(1)
+                    Log("I1")  # Inner arm 1 wins
+                block:
+                    Wait(4)
+                    Log("I2")  # Parent = outer arm 1, cancelled at tick 2
+            Log("X")  # After inner rush
+            Wait(1)   # Outer arm 1 completes at tick 2
+        block:
+            Log("O2")
+            Wait(3)
+            Log("O2done")  # Parent = spawn's task, continues
+    Log("F")
+    Wait(3)
+    Log("G")
+
+assert:
+    spawn{TestNestedRush()}
+    Tick(6)
+    # VVM: I2 cancelled when outer arm 1 completes
+    # BPVM BUG: I2 not cancelled
+    AssertLogStr["TestNestedRush", "AO1O2,I1X,F,O2done,,G,", ?BPVMExpected:="AO1O2,I1X,F,O2done,I2,G,"]
+
+
+############################################
+# TEST 5: Rush inside race arm
+#
+# Race creates "outer" task. Each race arm is an "inner" task (parent = outer).
+# Rush inside race arm: rush arms' parent = race inner task.
+# When race completes (outer ends), losing inner tasks cancelled, cascading to rush arms.
+#
+# Timeline:
+#   Tick 0: A, race starts outer task, inner tasks start, R1, R2 start
+#   Tick 1: Race arm 1 completes (1), race outer completes, F logged
+#           -> Race arm 2 cancelled (inner task ends)
+#           -> R2 cancelled (parent = race arm 2's task)
+#   Tick 3: R2 would complete IF NOT cancelled
+#   Tick 4: G logged
+#
+TestRushInRaceArm()<suspends>: void =
+    Log("A")
+    race:
+        block:
+            Wait(1)
+            Log("1")  # Race arm 1 wins
+        block:
+            rush:
+                block:
+                    Log("R1")
+                    Wait(2)
+                    Log("R1done")  # Parent = race arm 2, cancelled when race ends
+                block:
+                    Log("R2")
+                    Wait(3)
+                    Log("R2done")  # Also cancelled
+            Log("X")  # Never reached - race arm 2 cancelled
+    Log("F")
+    Wait(3)
+    Log("G")
+
+assert:
+    spawn{TestRushInRaceArm()}
+    Tick(5)
+    # VVM: R1done, R2done, X never appear - all cancelled when race ends
+    # BPVM BUG: Race arm 2 and its rush arms continue running
+    AssertLogStr["TestRushInRaceArm", "AR1R2,1F,,,G,", ?BPVMExpected:="AR1R2,1F,R1doneX,R2done,G,"]
+
+
+############################################
+# TEST 6: Loop calling function with rush (from spec example)
+#
+# Rush inside a function called from a loop. Each iteration's rush background
+# arms have the spawn's task as parent (not the loop or the function).
+# All background arms continue until the spawned function returns.
+#
+# Note: rush directly in loop is not supported, so we wrap it in a function.
+#
+# Timeline:
+#   Tick 0: A, F1 logged, both arms start
+#   Tick 1: Fast arm 1 completes, B logged, F2 logged, iteration 2 starts
+#   Tick 2: Fast arm 2 completes, B logged, F3 logged, iteration 3 starts
+#   Tick 3: Fast arm 3 completes, B logged, loop done, C logged, S1 completes
+#   Tick 4: S2 completes
+#   Tick 5: S3 completes
+#   Tick 7: G logged (function returns after all S* complete)
+#
+DoFastThenSlow(X:int)<suspends>: void =
+    rush:
+        block:
+            Log("F{X}")  # Fast - completes in 1 tick
+            Wait(1)
+        block:
+            Wait(3)
+            Log("S{X}")  # Slow - completes 3 ticks after start
+
+TestLoopWithRush()<suspends>: void =
+    Log("A")
+    for (X := 1..3):
+        DoFastThenSlow(X)
+        Log("B")
+    Log("C")
+    Wait(4)
+    Log("G")
+
+assert:
+    spawn{TestLoopWithRush()}
+    Tick(8)
+    # All S1, S2, S3 should appear - rush arms continue until function returns at tick 7
+    # BPVM: S1/S2/S3 don't appear - rush arms cancelled when DoFastThenSlow returns?
+    AssertLogStr["TestLoopWithRush", "AF1,BF2,BF3,BCS1,S2,S3,,G,", ?BPVMExpected:="AF1,BF2,BF3,BC,,,,G,"]
+
+
+############################################
+# TEST 7: Deep nesting - sync > rush > branch
+#
+# Sync arm contains rush, rush arm contains branch.
+# Branch's parent = rush arm's task.
+# Rush arm's parent = sync arm's task.
+#
+# When rush arm 1 completes:
+# - Branch cancelled (parent = rush arm 1)
+# - Rush arm 2 continues (parent = sync arm, still running)
+#
+# When sync arm 1 completes:
+# - Rush arm 2 cancelled (parent = sync arm 1)
+#
+TestDeepNesting()<suspends>: void =
+    Log("A")
+    sync:
+        block:
+            rush:
+                block:
+                    branch:
+                        Wait(5)
+                        Log("B")  # Parent = rush arm 1, cancelled at tick 1
+                    Wait(1)
+                    Log("R1")     # Rush arm 1 completes at tick 1
+                block:
+                    Wait(3)
+                    Log("R2")     # Parent = sync arm 1, cancelled at tick 2
+            Log("X")             # After rush, at tick 1
+            Wait(1)              # Sync arm 1 completes at tick 2
+        block:
+            Wait(4)
+            Log("S2")            # Sync arm 2 completes at tick 4
+    Log("Z")
+    Wait(1)
+    Log("G")
+
+assert:
+    spawn{TestDeepNesting()}
+    Tick(6)
+    # VVM: B cancelled at tick 1, R2 cancelled at tick 2, S2 appears at tick 4
+    # BPVM BUG: B and R2 not cancelled
+    AssertLogStr["TestDeepNesting", "A,R1X,,,S2Z,G,", ?BPVMExpected:="A,R1X,,R2,S2Z,BG,"]

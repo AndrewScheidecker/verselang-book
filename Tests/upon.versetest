@@ -28,7 +28,7 @@ assert_semantic_error(3512):
     Main():void =
         upon(F()){}
 
-assert_semantic_error(3552):
+assert_semantic_error(3684):
     Main():void =
         loop:
             upon(1):
@@ -92,4 +92,18 @@ assert:
         set Y = X
     set X = 1
     Y = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    var Result:int = 0
+    loop:
+        Z := X
+        if (Z >= 3):
+            break
+        upon(Y):
+            set Result += Z
+        set X += 1
+    set Y = 1
+    Result = 0 + 1 + 2
 }

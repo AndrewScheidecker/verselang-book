@@ -1,0 +1,34 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Make sure that we do not attempt to resolve definitions that are in internal API/user packages from public user packages.
+assert_valid:
+    vpackage(P0, /Verse.org/Temporary, ?Scope:=InternalAPI):
+        snippet:
+            Blah<public>:int = 42
+    vpackage(P1, /NotVerse.org/Temporary, ?Scope:=PublicAPI):
+        snippet:
+            Blah<public>:int = 43
+    vpackage(P2, /User, ?Dependencies:=(P0, P1), ?Scope:=PublicUser):
+        snippet:
+            using{/Verse.org}
+            using{/NotVerse.org}
+            Foo():int=Temporary.Blah
+
+assert_valid:
+    vpackage(P0, /Fortnite.com/AI, ?Scope:=InternalAPI):
+        snippet:
+            Foo<public>:int = 42
+    vpackage(P1, /Fortnite.com/AI, ?Scope:=PublicAPI):
+        snippet:
+            movement_type<public> := enum<open>:
+                Walking
+                Running
+
+            movement_types<public> := module:
+                Walking<public> : movement_type = movement_type.Walking
+                Running<public> : movement_type = movement_type.Running
+
+    vpackage(P2, /User, ?Dependencies:=(P0, P1), ?Scope:=PublicUser):
+        snippet:
+            using{/Fortnite.com/AI}
+            Foo():movement_type = movement_types.Walking

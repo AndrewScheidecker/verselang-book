@@ -1,0 +1,128 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Non-native and native arrays:
+
+assert:
+    var Array:[]int = array{3, 5, 8}
+    Array[set Array[1] = 13; 1] = 13
+    X := Array[set Array = array{21, 34, 55}; 1]
+    verse_vm_only{ X = 13 }
+    verse_vm_todo{ X = 34 }
+
+assert:
+    N := native_deeply_mutable{Array := array{3, 5, 8}}
+    N.Array[set N.Array[1] = 13; 1] = 13
+    N.Array[set N.Array = array{21, 34, 55}; 1] = 34
+
+# Non-native and native strings:
+
+assert:
+    var String:string = "abc"
+    String[set String[1] = 'd'; 1] = 'd'
+    X := String[set String = "efg"; 1]
+    verse_vm_only{ X = 'd' }
+    verse_vm_todo{ X = 'f' }
+
+assert:
+    N := native_deeply_mutable{String := "abc"}
+    N.String[set N.String[1] = 'd'; 1] = 'd'
+    N.String[set N.String = "efg"; 1] = 'f'
+
+# Non-native and native maps:
+
+assert:
+    var Map:[int]int = map{0 => 3, 1 => 5, 2 => 8}
+    Map[set Map[1] = 13; 1] = 13
+    Map[set Map[3] = 13; 3] = 13
+    X := Map[set Map = map{0 => 21, 1 => 34, 2 => 55}; 1]
+    verse_vm_only{ X = 13 }
+    verse_vm_todo{ X = 34 }
+
+assert:
+    N := native_deeply_mutable{Map := map{0 => 3, 1 => 5, 2 => 8}}
+    N.Map[set N.Map[1] = 13; 1] = 13
+    N.Map[set N.Map[3] = 13; 3] = 13
+    N.Map[set N.Map = map{0 => 21, 1 => 34, 2 => 55}; 1] = 34
+
+# Native structs:
+
+assert:
+    N := native_deeply_mutable{Struct := mutable_struct{X := 3}}
+    set N.Struct.X = 5
+    N.Struct.X = 5
+    N.Struct = mutable_struct{X := 5}
+
+# Non-native and native outer arrays:
+
+assert:
+    var ArrayArray:[][]int = array{array{}, array{3, 5, 8}, array{}}
+    X := ArrayArray[1][set ArrayArray[1][1] = 13; 1]
+    bp_vm_only{ X = 5 }
+    verse_vm_only{ X = 13 }
+    Y := ArrayArray[1][set ArrayArray[1] = array{21, 34, 55}; 1]
+    bp_vm_only{ Y = 13 }
+    verse_vm_only{ Y = 13; verse_vm_todo{ Y = 34 } }
+    ArrayArray[1][set ArrayArray = array{array{}, array{}, array{}}; 1] = 34
+
+verse_vm_only{
+assert:
+    N := native_deeply_mutable{ArrayArray := array{array{}, array{3, 5, 8}, array{}}}
+    N.ArrayArray[1][set N.ArrayArray[1][1] = 13; 1] = 13
+
+# Could succeed; limitation of mutation tracking
+assert_runtime_error:
+    N := native_deeply_mutable{ArrayArray := array{array{}, array{3, 13, 8}, array{}}}
+    N.ArrayArray[1][set N.ArrayArray[1] = array{21, 34, 55}; 1] = 34
+
+# Cannot succeed with native arrays
+assert_runtime_error:
+    N := native_deeply_mutable{ArrayArray := array{array{}, array{21, 34, 55}, array{}}}
+    N.ArrayArray[1][set N.ArrayArray = array{array{}, array{}, array{}}; 1] = 34
+}
+
+# Non-native and native outer maps:
+
+assert:
+    var MapArray:[int][]int = map{0 => array{}, 1 => array{3, 5, 8}, 2 => array{}}
+    not (set MapArray[3][5] = 8)
+    X := MapArray[1][set MapArray[1][1] = 13; 1]
+    bp_vm_only{ X = 5 }
+    verse_vm_only{ X = 13 }
+    Y := MapArray[1][set MapArray[1] = array{21, 34, 55}; 1]
+    bp_vm_only{ Y = 13 }
+    verse_vm_only{ Y = 13; verse_vm_todo{ Y = 34 } }
+    MapArray[1][set MapArray[3] = array{}; 1] = 34
+    MapArray[1][set MapArray = map{0 => array{}, 1 => array{}, 2 => array{}}; 1] = 34
+
+verse_vm_only{
+assert:
+    N := native_deeply_mutable{MapArray := map{0 => array{}, 1 => array{3, 5, 8}, 2 => array{}}}
+    not (set N.MapArray[3][5] = 8)
+    N.MapArray[1][set N.MapArray[1][1] = 13; 1] = 13
+
+# Could succeed; limitation of mutation tracking
+assert_runtime_error:
+    N := native_deeply_mutable{MapArray := map{0 => array{}, 1 => array{3, 13, 8}, 2 => array{}}}
+    N.MapArray[1][set N.MapArray[1] = array{21, 34, 55}; 1] = 34
+
+# Cannot succeed with native maps
+assert_runtime_error:
+    N := native_deeply_mutable{MapArray := map{0 => array{}, 1 => array{21, 34, 55}, 2 => array{}}}
+    N.MapArray[1][set N.MapArray[3] = array{}; 1] = 34
+
+# Cannot succeed with native maps
+assert_runtime_error:
+    N := native_deeply_mutable{MapArray := map{0 => array{}, 1 => array{21, 34, 55}, 2 => array{}}}
+    N.MapArray[1][set N.MapArray = map{0 => array{}, 1 => array{}, 2 => array{}}; 1] = 34
+}
+
+# Native outer structs:
+
+assert:
+    N := native_deeply_mutable{StructStruct := mutable_wrapper_struct{Struct := mutable_struct{X := 3}}}
+    set N.StructStruct.Struct.X = 5
+    N.StructStruct.Struct.X = 5
+    N.StructStruct.Struct = mutable_struct{X := 5}
+    N.StructStruct = mutable_wrapper_struct{Struct := mutable_struct{X := 5}}

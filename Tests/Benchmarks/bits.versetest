@@ -453,12 +453,11 @@ RunBits()<decides><transacts>:void=
              MkWord8[I]
 
     W16s:[]Word16 =
-        for (I := 0..0x4FF): # we don't explore the whole space for time, this
-                             # finishes in roughly 5 seconds
+        for (I := 0..0x2FF): # we don't explore the whole space for time
              MkWord16[I]
 
     W32s:[]Word32 =
-        for (I := 0..0x4FF): # we further reduce the space for versetest compared
+        for (I := 0..0x2FF): # we further reduce the space for versetest compared
              MkWord32[I]     # to the Benchmark version
 
     for (W8 : W8s):

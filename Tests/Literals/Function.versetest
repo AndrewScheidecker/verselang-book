@@ -8,6 +8,15 @@ assert_valid_syntax{"a =\> b"}
 assert_valid_syntax{"(a,b) =\> c"}
 assert_valid_syntax{"a =\>\n    c"}
 
+# Invalid lambda syntax
+assert_syntax_error(3100){"=\>"}
+assert_syntax_error(3100){"=\> a"}
+
+# Lambda with block bodies
+assert_valid_syntax{"(X:int) =\> \{ X + 1 \}"}
+assert_valid_syntax{"() =\> \{ 1 + 2 \}"}
+assert_valid_syntax{"a =\> \{ b; c \}"}
+
 assert_semantic_error(3502){ X:int=((Y:int)=>Y) }
 
 assert_roundtrip{() => b}
@@ -15,6 +24,10 @@ assert_roundtrip{a => b}
 assert_roundtrip{a => {b;c}}
 assert_roundtrip{a => {b,c}}
 assert_roundtrip{a => {}}
+assert_roundtrip{(a, b) => c}
+assert_roundtrip{(X:int) => X}
+assert_roundtrip{(X:int, Y:int) => X}
+assert_roundtrip{() => {1;2}}
 
 assert_roundtrip{
 a =>

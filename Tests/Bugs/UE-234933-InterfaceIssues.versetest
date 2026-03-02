@@ -21,32 +21,18 @@ assert:
     set Object.Value = 124
     124 = Object.Value
 
-# This still doesn't work ...
-assert_semantic_error(3506, 3506):
-    v(t:type) := class { T<public> : ?t = false }
-    i(t:type) := interface { V<public> : v(t) = v(t){} }
-    c := class(i(int)) { }
-
-    Dummy()<decides>:void =
-        O := c{ V := v(int){ T := option{42} } }
-        O.V.T? = 42
-
-# ... but it's unrelated to default values in interfaces,
-# and hence wont be fixed in this jira.
-assert_semantic_error(3506, 3506):
-    v(t:type) := class { T<public> : ?t = false }
-    i(t:type) := interface { V<public> : v(t) }
-    c := class(i(int)) { }
-
-    Dummy()<decides>:void =
-        O := c{ V := v(int){ T := option{42} } }
-        O.V.T? = 42
-
-# Should probably work since if 'interface' is replaced with 'class' then it compiles.
 v(t:type) := class { T<public> : ?t = false }
-i(t:type) := class { V<public> : v(t) = v(t){} }
-c := class(i(int)) { }
+
+i0(t:type) := interface { V<public> : v(t) = v(t){} }
+c0 := class(i0(int)) { }
 
 assert:
-    O := c{ V := v(int){ T := option{42} } }
+    O := c0{ V := v(int){ T := option{42} } }
+    O.V.T? = 42
+
+i1(t:type) := interface { V<public> : v(t) }
+c1 := class(i1(int)) { }
+
+assert:
+    O := c1{ V := v(int){ T := option{42} } }
     O.V.T? = 42

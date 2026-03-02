@@ -1,0 +1,25 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+player<public> := class:
+    var V<public>:int = 0
+    Add<public>(X:int):int =
+        set V = V + X
+        V
+MyModule:= module:
+    (InPlayer:player).(/Verse.org/VerseTests/MyModule:)DoSomething<public>(X:int):int = InPlayer.Add(X) 
+
+using { /Verse.org/VerseTests/YourModule }
+
+
+YourModule:= module:
+    (InPlayer:player).(/Verse.org/VerseTests/YourModule:)DoSomething<public>(X:int):int = InPlayer.Add(2*X) 
+
+using { /Verse.org/VerseTests/MyModule }
+
+assert:
+    Player : player = player{}
+    Player.(/Verse.org/VerseTests/MyModule:)DoSomething(10) = 10
+
+
+
+

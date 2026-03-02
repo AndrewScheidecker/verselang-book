@@ -1,0 +1,8 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3568):
+    parametric_class(t:type) := class<abstract>:
+        SomeMethod<final>():int = 0
+
+    parametric_class_int := class(parametric_class(int)):
+        SomeMethod<override>():int = 1

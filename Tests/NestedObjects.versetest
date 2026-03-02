@@ -1,0 +1,84 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+# Use case (see FORT-1031154):
+#
+#  a     b            1. b constructs a unique instance of a (A), b.A.X = 10
+#       / \           2. c constructs a unique instance of a (A), initialized from b.A, c.A.X = 10
+#      c   d          3. d constructs a unique instance of a (A), initialized from b.A, d.A.X = 20 (override)
+#          |          4. d constructs a unique instance of c (C), d.C.A.X = 10
+#          e          5. e constructs a unique instance of a (A), initialized from d.A, e.A.X = 30 (override)
+#                     6. e constructs a unique instance of c (C), e.C.A.X = 10
+
+a := class<unique>:
+    X:int
+b := class<unique>:
+    A:a = a{X := 10}
+c := class<unique>(b) {}
+d := class<unique>(b):
+    A<override>:a = a{X := 20}
+    C:c = c{}
+e := class<unique>(d):
+    A<override>:a = a{X := 30}
+f := class<concrete>:
+    E:e = e{}
+
+assert: # (1)
+    B1:= b{}
+    B2:= b{}
+    B1.A.X = 10
+    B1.A <> B2.A
+
+assert: # (2)
+    B1:= b{}
+    C1:= c{}
+    C2:= c{}
+    C1.A.X = 10
+    C1.A <> B1.A
+    C1.A <> C2.A
+
+assert: # (3)
+    B1:= b{}
+    D1:= d{}
+    D2:= d{}
+    D1.A.X = 20
+    D1.A <> B1.A
+    D1.A <> D2.A
+
+assert: # (4)
+    C1:= c{}
+    D1:= d{}
+    D2:= d{}
+    D1.C <> D2.C
+    D1.C.A.X = 10
+    D1.C.A <> C1.A
+    D1.C.A <> D2.C.A
+
+assert: # (5)
+    B1:= b{}
+    D1:= d{}
+    E1:= e{}
+    E2:= e{}
+    E1.A.X = 30
+    E1.A <> B1.A
+    E1.A <> D1.A
+    E1.A <> E2.A
+
+assert: # (6)
+    D1:= d{}
+    E1:= e{}
+    E2:= e{}
+    E1.C <> D1.C
+    E1.C <> E2.C
+    E1.C.A.X = 10
+    E1.C.A <> D1.C.A
+    E1.C.A <> E2.C.A
+
+assert:
+    F1:= f{}
+    F2:= f{}
+    F1.E <> F2.E
+    F1.E.A <> F2.E.A
+    F1.E.C <> F2.E.C
+    F1.E.A.X = F2.E.A.X

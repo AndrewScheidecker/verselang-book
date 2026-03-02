@@ -1,3 +1,12 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Leading zeros *do not* trigger octal interpretation
+assert{01 = 1}
+assert{0123 = 123}
+assert{0777 = 777}
+assert{010 = 10}
+assert{00001000 = 1000}
+
 assert{  0 = 0x00000000}
 assert{  1 = 0x00000001}
 assert{  2 = 0x00000002}
@@ -96,6 +105,16 @@ assert{+ -2147483648 = -0x0000000080000000}
 assert{- +2147483648 = -0x0000000080000000}
 assert{- -2147483648 = 0x0000000080000000}
 
+# More sign spacing variations
+assert{+  0 = 0}
+assert{-  1 = -1}
+assert{+   1 = 1}
+assert{-   1 = -1}
+assert{+ + +1 = 1}
+assert{- - -1 = -1}
+assert{+ - +1 = -1}
+assert{- + -1 = 1}
+
 assert{4294967295 = 0x00000000ffffffff}
 
 assert_valid_syntax      {"0x1"}
@@ -103,6 +122,49 @@ assert_syntax_error(3100){"0x1_"}
 assert_syntax_error(3100){"0x1g"}
 assert_syntax_error(3100){"0x1G"}
 assert_syntax_error(3100){"0x1Z"}
+
+# Invalid/malformed hex literals
+assert_syntax_error(3101){"0x"}
+assert_syntax_error(3101){"0X"}
+assert_syntax_error(3101){"0x_1"}
+assert_syntax_error(3101){"0x_"}
+
+# Underscore separators (not supported)
+assert_syntax_error(3101){"1_000"}
+assert_syntax_error(3101){"1_000_000"}
+assert_syntax_error(3100){"0xff_ff"}
+assert_syntax_error(3101){"0x_ff_ff"}
+
+# Uppercase hex prefix (0X) - not supported
+assert_syntax_error(3101){"0X1"}
+assert_syntax_error(3101){"0X0"}
+assert_syntax_error(3101){"0XFF"}
+assert_syntax_error(3101){"0XABCDEF"}
+assert_syntax_error(3101){"-0X1"}
+
+# Hex with uppercase letters
+assert{0xABCDEF = 0xabcdef}
+assert{0xFF = 0xff}
+assert{0xA = 0xa}
+assert{0xF = 0xf}
+assert{0xDeAdBeEf = 0xdeadbeef}
+assert{0xAbCdEf = 0xABCDEF}
+
+# Negative hex literals
+assert{-0x1 = -1}
+assert{-0xff = -255}
+assert{-0xFF = -255}
+assert{-0x100 = -256}
+assert{-0xABCDEF = -11259375}
+assert{-0x7fffffffffffffff = -9223372036854775807}
+
+# Hex boundary values
+assert{0x7fffffffffffffff = 9223372036854775807}
+assert{-0x8000000000000000 = -9223372036854775808}
+assert{0xffffffff = 4294967295}
+assert{0xFFFFFFFF = 4294967295}
+assert{0x80000000 = 2147483648}
+assert{0x7fffffff = 2147483647}
 
 assert { -4294967295           }
 assert { -2147483649           }

@@ -28,7 +28,7 @@ assert_semantic_error(3512):
     Main():void =
         when(F()){}
 
-assert_semantic_error(3552):
+assert_semantic_error(3683):
     Main():void =
         loop:
             when(1):
@@ -110,4 +110,124 @@ assert:
             set Y = Z
     X = -1
     Y = 0
+
+# batch
+assert:
+    var X:int = 1
+    var Y:int = 1
+    var Z:int = 0
+    when(X, Y):
+        set Z += X - Y
+    batch:
+        set X = 2
+        set Y = 2
+    Z = 0
+
+# Nested batches are equivalent to a single outer batch.
+assert:
+    var X:int = 1
+    var Y:int = 1
+    var Z:int = 0
+    when(X, Y):
+        set Z += X - Y
+    batch:
+        set X = 2
+        batch:
+            set Y = 2
+    Z = 0
+
+# Adjacent batches
+assert:
+    var X:int = 1
+    var Y:int = 1
+    var Z:int = 0
+    when(X, Y):
+        set Z += X - Y
+    batch:
+        set X = 1
+        set Y = 2
+    Z = -1 # Run the when once
+    batch:
+        set X = 3
+        set Y = 5
+    Z = -3 # Again, run the when once
+
+# Failing batch
+assert:
+    var X:int = 1
+    var Y:int = 1
+    var Z:int = 0
+    when(X, Y):
+        set Z += X - Y
+    if:
+        batch:
+            set X = 1
+            set Y = 2
+            false?
+    batch:
+        set X = 3
+        set Y = 5
+    Z = -2
+
+# Resumptions in a batch use whatever batch was active at the resumption site
+BatchSpawn := module:
+    F<public>(X:int_ref, Y:int_ref, Event:event())<suspends>:void =
+        Event.Await()
+        set X.Contents = 3
+        set Y.Contents = 4
+
+assert:
+    Event := event(){}
+    X := int_ref. Contents := 1
+    Y := int_ref. Contents := 1
+    var Z:int = 0
+    when(X.Contents, Y.Contents). set Z += X.Contents - Y.Contents
+    batch. spawn. BatchSpawn.F(X, Y, Event)
+    Z = 0
+    Event.Signal()
+    Z = 1
+
+assert:
+    Event := event(){}
+    X := int_ref. Contents := 1
+    Y := int_ref. Contents := 1
+    var Z:int = 0
+    when(X.Contents, Y.Contents). set Z += X.Contents - Y.Contents
+    batch. spawn. BatchSpawn.F(X, Y, Event)
+    Z = 0
+    batch. Event.Signal()
+    Z = -1
+
+# then should use the enclosing scope's `batch`
+assert:
+    var X:int = 1
+    var Y:int = 1
+    var Z:int = 0
+    when(X, Y):
+        set Z += X - Y
+    if:
+        true?
+        batch:
+            if (true?):
+                set X = 2
+                set Y = 2
+    Z = 0
+
+assert_semantic_error(3512):
+    F()<suspends>:void = {}
+    Main():void = batch. F()
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    var Result:int = 0
+    loop:
+        Z := X
+        if (Z >= 3):
+            break
+        when(Y):
+            set Result += Z
+        set X += 1
+    set Y = 1
+    Result = 0 + 1 + 2 + 0 + 1 + 2
 }

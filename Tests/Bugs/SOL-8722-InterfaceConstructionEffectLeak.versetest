@@ -1,0 +1,13 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Interface field initializers must respect the declared construction effects of the interface.
+assert_valid               {c := class<transacts>{}; i:=interface<transacts>{C:c = c{}}}
+assert_semantic_error(3512){c := class<transacts>{}; i:=interface<computes> {C:c = c{}}}
+
+# Interface construction effects must constrain the construction effects of classes that inherit them.
+assert_valid               {i := interface<computes> {}; c := class<computes>(i){}}
+assert_semantic_error(3512){i := interface<transacts>{}; c := class<computes>(i){}}
+
+# Interface construction effects must constrain the construction effects of interfaces that inherit them.
+assert_valid               {i := interface<computes> {}; j := interface<computes>(i){}}
+assert_semantic_error(3512){i := interface<transacts>{}; j := interface<computes>(i){}}

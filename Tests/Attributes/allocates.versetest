@@ -1,7 +1,7 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 #         RequireEffects(*MacroCallAst.Name(), EEffect::allocates, ExprCtx.AllowedEffects, "mutable data definition");
 
-# <allocates> only works with classes, structs, & functions.
+# <allocates> only works with classes, interfaces, structs, & functions.
 #  Combines with <varies> and <computes>, but redundant with <transacts>
 assert_valid                     {   c := class<computes><allocates> { Value:int = 0 } }
 assert_valid                     {   c := class<reads><allocates> { Value:int = 0 } }
@@ -9,6 +9,13 @@ assert_valid                     {   c := class<writes><allocates> { Value:int =
 assert_semantic_error(3565,3565) {   c := class<varies><allocates> { Value:int = 0 } }
 assert_semantic_error(3565)      {   c := class<transacts><allocates> { Value:int = 0 } }
 assert_valid                     {   c := class<allocates> { Value:int = 0 } }
+
+assert_valid                     {   i := interface<computes><allocates> { Value:int = 0 } }
+assert_valid                     {   i := interface<reads><allocates> { Value:int = 0 } }
+assert_valid                     {   i := interface<writes><allocates> { Value:int = 0 } }
+assert_semantic_error(3565,3565) {   i := interface<varies><allocates> { Value:int = 0 } }
+assert_semantic_error(3565)      {   i := interface<transacts><allocates> { Value:int = 0 } }
+assert_valid                     {   i := interface<allocates> { Value:int = 0 } }
 
 assert_valid                     {   s := struct<computes><allocates> { Value:int = 0 } }
 assert_valid                     {   s := struct<reads><allocates> { Value:int = 0 } }
@@ -24,11 +31,7 @@ assert_semantic_error(3565,3565) {    m := module { c := class {  func()<varies>
 assert_semantic_error(3565)      {    m := module { c := class {  func()<transacts><allocates>:void= 42  } } }
 assert_valid                     {    m := module { c := class {  func()<allocates>:void= 42  } } }
 
-# not allowed on interfaces, modules, and data definitions
-assert_semantic_error(3596):
-    i := interface<allocates>:                      #3596
-        func():void
-
+# not allowed on modules and data definitions
 assert_semantic_error(3604):
     m := module<allocates>:                         #3604
         c := class:

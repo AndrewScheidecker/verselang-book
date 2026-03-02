@@ -1,0 +1,30 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# https://epicgames.atlassian.net/browse/FORT-1042316
+FORT_1042316<public> := module:
+    counter<public> := class:
+        var X<public>:int = 0
+        Inc()<transacts>:void = {set X += 1}
+
+    itemtuple<public> := class:
+        C<public>:counter
+        block:
+            C.Inc()
+
+    lootpoolhelper := class:
+        # C tracks how many times SimpleLoadoutAmmo is instanced for lootpoolhelper. If the
+        # bug is present, C's value will be incremented multiple times and will fail to pass.
+        SimpleLoadoutAmmo:itemtuple = itemtuple{C := counter{}}
+
+    lootpoolloadout<public> := class:
+        # Bug: Anonymous instantiation leads to a recycled instantiation of SimpleLoadoutAmmo.
+        # Recycled instantiations within the same AutoRTFM context can crash under VerseVM,
+        # but they can also compound the effects of a block initializer, which affects logic.
+        Ammo<public>:itemtuple = lootpoolhelper{}.SimpleLoadoutAmmo
+
+    lootpool<public> := class:
+        LTM<public>:lootpoolloadout = lootpoolloadout{}
+
+assert:
+    LootPool:FORT_1042316.lootpool = FORT_1042316.lootpool{}
+    LootPool.LTM.Ammo.C.X = 1

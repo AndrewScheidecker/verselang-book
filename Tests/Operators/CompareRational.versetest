@@ -13,12 +13,38 @@ assert:
     for(TestInt:TestInts):
         TestInt=(TestInt/1)
 
+# Test [rational]int hashing/comparison of equivalent rationals/ints
 assert:
-    TestInts:[]int = array{1, 2, 3, 9223372036854775807}
+    TestInts:[]int = array{-9223372036854775808, -3, -2, -1, 1, 2, 3, 9223372036854775807}
     for(TestInt:TestInts):
         TestIntAsRational:rational = TestInt/1
         TestHalfInt:rational = TestInt/2
-        Map := map{TestInt=>1, TestIntAsRational=>2, TestHalfInt=>3}
-        Map[TestInt] = 2
-        Map[TestIntAsRational] = 2
-        Map[TestHalfInt] = 3
+        TestThirdInt:rational = TestInt/3
+        TestQuarterInt:rational = TestInt/4
+        TestFifthInt:rational = TestInt/5
+        Map:[rational]int = map{0=>0, TestInt=>-1, TestIntAsRational=>1, TestHalfInt=>2, TestThirdInt=>3, TestQuarterInt=>4, TestFifthInt=>5}
+        Map[0] = 0
+        Map[TestInt] = 1
+        Map[TestIntAsRational] = 1
+        Map[TestHalfInt] = 2
+        Map[TestThirdInt] = 3
+        Map[TestQuarterInt] = 4
+        Map[TestFifthInt] = 5
+        
+# Test [comparable]int hashing/comparison of equivalent rationals/ints
+assert:
+    TestInts:[]int = array{-9223372036854775808, -3, -2, -1, 1, 2, 3, 9223372036854775807}
+    for(TestInt:TestInts):
+        TestIntAsRational:rational = TestInt/1
+        TestHalfInt:rational = TestInt/2
+        TestThirdInt:rational = TestInt/3
+        TestQuarterInt:rational = TestInt/4
+        TestFifthInt:rational = TestInt/5
+        Map:[comparable]int = map{comparable(0)=>0, comparable(TestInt)=>-1, TestIntAsRational=>1, TestHalfInt=>2, TestThirdInt=>3, TestQuarterInt=>4, TestFifthInt=>5}
+        Map[0] = 0
+        Map[TestInt] = 1
+        Map[TestIntAsRational] = 1
+        Map[TestHalfInt] = 2
+        Map[TestThirdInt] = 3
+        Map[TestQuarterInt] = 4
+        Map[TestFifthInt] = 5

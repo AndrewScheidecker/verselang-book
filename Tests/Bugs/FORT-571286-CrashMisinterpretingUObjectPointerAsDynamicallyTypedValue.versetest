@@ -1,6 +1,7 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
 # These were previously allowed, but generated bad code.
+bp_vm_only {
 assert_semantic_error(3512):
     F1()<suspends>:any = ()
     F2(:any):void = {}
@@ -15,8 +16,38 @@ assert_semantic_error(3512):
     F1()<suspends>:[]int = ()
     F2(:any):void = {}
     F3():void=spawn{F2(F1())}
+}
+verse_vm_only {
+Module1 := module:
+    F1()<suspends>:any = ()
+    F2(:any):void = {}
+    F3<public>():void=spawn{F2(F1())}
 
-F1()<suspends>:any = 0
-F2(:any):void = {}
-F3()<suspends>:void=branch{F2(F1())}
-assert{spawn{F3()}}
+assert:
+    Module1.F3()
+    
+Module2 := module:
+    F1()<suspends>:tuple() = ()
+    F2(:any):void = {}
+    F3<public>():void=spawn{F2(F1())}
+
+assert:
+    Module2.F3()
+
+Module3 := module:
+    F1()<suspends>:[]int = ()
+    F2(:any):void = {}
+    F3<public>():void=spawn{F2(F1())}
+
+assert:
+    Module3.F3()
+}
+
+Module4 := module:
+    F1()<suspends>:any = 0
+    F2(:any):void = {}
+    F3<public>()<suspends>:void=branch{F2(F1())}
+
+assert:
+    spawn:
+        Module4.F3()

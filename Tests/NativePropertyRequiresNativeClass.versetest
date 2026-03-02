@@ -1,0 +1,34 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Verifies that a <native>-tagged property cannot reference a non-<native> class.
+# This test covers properties, arrays and maps in both var and non-var form.
+
+assert_semantic_error(3657):
+    non_native_class<public> := class { X:int = 0 }
+    native_class<native><public> := class:
+        MyObject<native><public>:non_native_class = non_native_class{X := 0}
+
+assert_semantic_error(3657):
+    non_native_class<public> := class { X:int = 0 }
+    native_class<native><public> := class:
+        var MyObject<native><public>:non_native_class = non_native_class{X := 0}
+
+assert_semantic_error(3657):
+    non_native_class<public> := class { X:int = 0 }
+    native_class<native><public> := class:
+        MyArray<native><public>:[]non_native_class = array{}
+
+assert_semantic_error(3657):
+    non_native_class<public> := class { X:int = 0 }
+    native_class<native><public> := class:
+        var MyArray<native><public>:[]non_native_class = array{}
+
+assert_semantic_error(3657):
+    non_native_class<public> := class { X:int = 0 }
+    native_class<native><public> := class:
+        MyMap<native><public>:[int]non_native_class = map{}
+
+assert_semantic_error(3657):
+    non_native_class<public> := class { X:int = 0 }
+    native_class<native><public> := class:
+        var MyMap<native><public>:[int]non_native_class = map{}

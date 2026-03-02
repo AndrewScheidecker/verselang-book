@@ -2,6 +2,12 @@ assert{false = false}
 assert{false <> true}
 assert{true = true}
 
+# Case sensitivity - only lowercase true/false are valid
+assert_semantic_error(3560){"X:logic = True"}
+assert_semantic_error(3560){"X:logic = False"}
+assert_semantic_error(3560){"X:logic = TRUE"}
+assert_semantic_error(3560){"X:logic = FALSE"}
+
 assert{false = logic{0 = 1}}
 assert{true = logic{0 = 0}}
 assert{false = logic{not true?}}

@@ -249,3 +249,87 @@ CallIntParam():void = IntParam(int)
 IntReturn():subtype(int) = int
 
 CallIntReturn():void = IntReturn()
+
+assert_semantic_error(3509):
+    CastableConcrete := module:
+        class1<public> := class {}
+        # TODO: Update to t[X] once this is supported.
+        Castable<public>(X:class1, t:castable_concrete_subtype(class1))<decides><computes>:t =
+            false?
+            Castable[X, t]
+        class2<public> := class<castable><unique>(class1):
+            Data<public>:int
+    Main()<decides><transacts>:void =
+        X := CastableConcrete.class2:
+            Data := 1
+        Y:CastableConcrete.class1 = X
+        Z:CastableConcrete.class2 = CastableConcrete.Castable[Y, CastableConcrete.class2]
+        X = Z
+
+assert_semantic_error(3509):
+    CastableConcrete := module:
+        class1<public> := class {}
+        # TODO: Update to t{} once this is supported.
+        Concrete<public>(t:castable_concrete_subtype(class1))<decides><computes>:t =
+            false?
+            Concrete[t]
+        class3<public> := class<concrete>(class1):
+            Data:int = 1
+    Main()<decides><transacts>:void =
+        X:CastableConcrete.class3 = CastableConcrete.Concrete[CastableConcrete.class3]
+
+CastableConcrete := module:
+    class1<public> := class {}
+    # TODO: Update to t[X] once this is supported.
+    Castable<public>(X:class1, t:castable_concrete_subtype(class1))<decides><computes>:t =
+        false?
+        Err("unreachable")
+    # TODO: Update to t{} once this is supported.
+    Concrete<public>(t:castable_concrete_subtype(class1))<decides><computes>:t =
+        false?
+        Err("unreachable")
+    class3<public> := class<concrete>(class1):
+        Data:int = 1
+    class4<public> := class<castable><concrete><unique>(class1):
+        Data:int = 2
+    class5<public> := class:
+        Data<public>:castable_concrete_subtype(class1)
+
+assert:
+    not (
+        X := CastableConcrete.class4{}
+        Y:CastableConcrete.class1 = X
+        Z:CastableConcrete.class4 = CastableConcrete.Castable[X, CastableConcrete.class4]
+        X = Z
+    )
+
+assert:
+    not (
+        X:CastableConcrete.class4 = CastableConcrete.Concrete[CastableConcrete.class4]
+    )
+
+assert:
+    X := CastableConcrete.class5:
+        Data := CastableConcrete.class4
+
+# No variance requirement
+assert_digest_generated:
+    vpackage(P0, /A):
+        snippet:
+            class1<public> := class{}
+            F<public>(t:castable_concrete_subtype(class1)):void = {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+            class1<public> := class:
+            F<public>(t:castable_concrete_subtype(class1)):void = external{}
+
+assert:
+    X:concrete_subtype(CastableConcrete.class1) = CastableConcrete.class4
+
+assert:
+    X:castable_concrete_subtype(CastableConcrete.class1) = CastableConcrete.class4
+    X[CastableConcrete.class4{}]
+
+assert:
+    X:castable_concrete_subtype(CastableConcrete.class1) = CastableConcrete.class4
+    not X[CastableConcrete.class3{}]

@@ -94,33 +94,26 @@ assert:
     Z.D = array{1}
 
 # test lenient native self via ctor func calls
-# TODO: We are in the open, then we converted a VVM string into a native string, and try to move it into the object (this is closed)
-#       This fails because we go back to the open to try and mark that we moved a thing and our closed code asserts
-#
-#       This kind of failure should occur for strings, maps, structs... our options to fix are:
-#           - move more stuff into the WriteImpl Lambda?
-<#
 assert:
     T := e_test{}
     T.A = 10
     T.B = "10"
-#>
 
 # test nested class/struct usage in ctor
+# TODO(SOL-8757): This test relies on initializing T.F without the effect token.
+verse_vm_todo{
 assert:
     T := f_test{}
     T.F.A[0].A = 10
     T.F.A[0].B = 0
     T.F.B[0].A = 0
     T.F.B[0].B = 20
+} #verse_vm_todo
 
 #test `SetField` on deeply mutable struct in ctor
-# TODO: Deep-mutability of native structs not implemented yet!
-<#
 assert:
     T:g_test := g_test{}
     T.G.A = 10
-#>
 
 # lenient const evaluation in block
 # TODO: We should update semantic analysis to allow this in the VerseVM (good chance it `just works` with the new lenient initialization logic)

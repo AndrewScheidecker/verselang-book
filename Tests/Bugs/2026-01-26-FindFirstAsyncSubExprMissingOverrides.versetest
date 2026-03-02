@@ -1,0 +1,33 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Bug 1: CExprTupleElement
+
+assert_valid:
+    Suspend()<suspends>:false = Suspend()
+    TestTupleElementInRace()<suspends>:void =
+        race:
+            (sync{block{Suspend(); 10}, block{Suspend(); 20}})(1)
+            Suspend()
+
+assert_valid:
+    Suspend()<suspends>:void = {}
+    TestTupleElementInRush()<suspends>:void =
+        rush:
+            (sync{block{Suspend(); 10}, block{Suspend(); 20}})(1)
+            Suspend()
+
+# Bug 2: CExprNewPointer
+
+assert_valid:
+    Suspend()<suspends>:false = Suspend()
+    TestNewPointerInRace()<suspends>:void =
+        race:
+            var X:int = Suspend()
+            Suspend()
+
+assert_valid:
+    Suspend()<suspends>:false = Suspend()
+    TestNewPointerInRush()<suspends>:void =
+        rush:
+            var X:int = Suspend()
+            Suspend()

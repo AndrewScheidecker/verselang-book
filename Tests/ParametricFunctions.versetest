@@ -297,15 +297,14 @@ assert_valid:
     F3()<transacts><decides>:void = Plus(Two, Two, Succ, 0) = 4
 }
 
-
-class3 := class:
+int_ref := class:
     Property:int
 
 # Ensure incremental code generation works with coerced functions
 assert:
     TestParametricFunction(Identity, 1) = 1
     TestParametricFunction(Identity, 'a') = 'a'
-    TestParametricFunction(Identity, class3{Property:=2}).Property = 2
+    TestParametricFunction(Identity, int_ref{Property:=2}).Property = 2
 
 assert:
     TestNestedUniversalQuantifier(1, 2) = 1
@@ -323,7 +322,7 @@ FallableIdentity(X:t where t:type)<decides>:t = X
 assert:
     FallableIdentity[0] = 0
     FallableIdentity[1] = 1
-    FallableIdentity[class3{Property:=2}].Property = 2
+    FallableIdentity[int_ref{Property:=2}].Property = 2
 
 assert:
     F := Identity
@@ -429,20 +428,121 @@ assert:
     Y := (3, 4)
     (X + Y) = array{1, 2, 3, 4}
 
-# Don't allow parametric functions to return a type that is invariant in an inferred type.
+assert_semantic_error(3552):
+    Var := module:
+        c<public>(t:type) := class:
+            var Data<public>:t
+        F<public>(X:t where t:type)<transacts>:c(t) = c(t):
+            Data := X
+
+assert_semantic_error(3552):
+        Var := module:
+        c<public>(t:type) := class:
+            var Data<public>:t
+        F<public>(X:c(t) where t:type)<transacts>:void = {}
+
+Var := module:
+    c<public>(t:type) := class:
+        var Data<public>:t
+    s1<public> := struct<computes>:
+        Data:int
+    s2<public>(t:type) := struct<computes>:
+        Data:t
+    F<public>(t:type, X:t)<transacts>:c(t) = c(t):
+        Data := X
+
+assert:
+    X := Var.F(comparable, 1)
+    set X.Data = "hello"
+    X.Data = "hello"
+
+assert:
+    X := Var.F(int, 1)
+    set X.Data += 2
+    X.Data = 3
+
+assert:
+    X := Var.F(type{Y:int where Y >= 1, Y <= 2}, 1)
+    set X.Data = 2
+    X.Data = 2
+
+assert:
+    X := Var.F([]int, array{1, 2})
+    set X.Data[0] = 3
+    X.Data[0] = 3
+    X.Data[1] = 2
+
+assert:
+    X := Var.F(Var.s1, Var.s1{Data := 1})
+    set X.Data.Data = 2
+    X.Data.Data = 2
+
+assert:
+    X := Var.F(Var.s2(int), Var.s2(int){Data := 1})
+    set X.Data.Data = 2
+    X.Data.Data = 2
+
+assert:
+    X := Var.F(Var.s2(int), Var.s2(int){Data := 1})
+    set X.Data.Data += 2
+    X.Data.Data = 3
+
+assert:
+    X := Var.F(Var.s2([]int), Var.s2([]int){Data := array{1, 2}})
+    set X.Data.Data[0] = 3
+    X.Data.Data[0] = 3
+    X.Data.Data[1] = 2
+
 assert_semantic_error(3502):
-    c(t:type):=class{var X:t}
-    F(X:t where t:type):c(t)=
-        c(t){X:=X}
-    G():void=
-        set F(1).X = 2
+    InterfaceVar := module:
+        i<public>(t:type) := interface:
+            var Data<public>:t
+
+assert_semantic_error(3509):
+    c(t:type) := class:
+        var X:t
+    F(t:type, X:t)<transacts>:c(t) = c(t):
+        X := X
+    G(X:type{Y:int where Y <= 1}):void = {}
+    H():void =
+        X := F(type{Y:int where Y >= 1, Y <= 2}, 1)
+        set X.X = 2
+        G(X.X)
 
 assert_valid:
-    c(t:type):=class{Method(X:t):t=X}
+    c(t:type) := class:
+        Method(X:t):t = X
     F(X:t where t:type):c(t)=
         c(t){}
     G():void=
         F(1).Method(2)
+
+# Ensure `var` type with nested implicit type parameters are allowed.
+assert_valid:
+    c0(t:type) := class:
+        var Data:c1
+    c1 := class:
+        Method(Arg:t where t:type):t = Arg
+    F(Arg:t where t:type):c0(t) = c0(t):
+        Data := c1{}    
+
+MutationLoophole := module:
+    (MutationLoophole:)class1(t:type) := class:
+        var Data:t
+        Get():t = Data
+        Set(Arg:t):void = set Data = Arg
+    F<public>(Arg:t where t:type):tuple(tuple() -> t, t -> void) =
+        Obj := (MutationLoophole:)class1(t):
+            Data := Arg
+        Obj.Get, Obj.Set
+
+assert:
+    Ref := MutationLoophole.F(1)
+    Ref(0)() = 1
+    # Required so a function coercion isn't required.
+    Two:comparable = 2
+    Ref(1)(Two)
+    Ref(0)() = Two
 
 # Include superclass and implemented interfaces when performing polarity use check.
 assert_valid:
@@ -486,3 +586,122 @@ assert_valid:
 assert_semantic_error(3506):
     F(X:t where t:subtype(u), u:subtype(t)):void =
         X.Foo
+
+RepeatedTupleInstantiation := module:
+    (RepeatedTupleInstantiation:)class1<public>(t:type) := class:
+        Data<public>:class2(tuple(int, t))
+        Method<public>(Arg1:int, Arg2:t)<computes><decides>:void =
+            Data.Method[Arg1, Arg2]
+    (RepeatedTupleInstantiation:)class2<public>(t:type) := class:
+        Data<public>:type{_(:t)<computes><decides>:void}
+        Method<public>(Arg:t)<computes><decides>:void =
+            Data[Arg]
+    class3<public> := class<unique> {}
+    A<public>(Arg1:int, Arg2:class3)<computes><decides>:void =
+        Arg1 = 1
+
+assert:
+    X := RepeatedTupleInstantiation.class3{}
+    Y := RepeatedTupleInstantiation.class1(RepeatedTupleInstantiation.class3):
+        Data := RepeatedTupleInstantiation.class2(tuple(int, RepeatedTupleInstantiation.class3)):
+            Data := RepeatedTupleInstantiation.A
+    Z := RepeatedTupleInstantiation.class3{}
+    Y.Method[1, Z]
+    not Y.Method[2, Z]
+
+RepeatedOptionInstantiation := module:
+    (RepeatedOptionInstantiation:)class1<public>(t:type) := class:
+        Data<public>:class2(?t)
+        Method<public>(Arg:?t)<computes><decides>:void =
+            Data.Method[Arg]
+    (RepeatedOptionInstantiation:)class2<public>(t:type) := class:
+        Data<public>:type{_(:t)<computes><decides>:void}
+        Method<public>(Arg:t)<computes><decides>:void =
+            Data[Arg]
+    class3<public> := class<unique> {}
+    B<public>(Arg:?class3)<computes><decides>:void =
+        Arg?
+
+assert:
+    X := RepeatedOptionInstantiation.class3{}
+    Y := RepeatedOptionInstantiation.class1(RepeatedOptionInstantiation.class3):
+        Data := RepeatedOptionInstantiation.class2(?RepeatedOptionInstantiation.class3):
+            Data := RepeatedOptionInstantiation.B
+    Y.Method[option{RepeatedOptionInstantiation.class3{}}]
+    not Y.Method[false]
+
+RepeatedArrayInstantiation := module:
+    (RepeatedArrayInstantiation:)class1<public>(t:type) := class:
+        Data<public>:class2([]t)
+        Method<public>(Arg:[]t)<computes><decides>:void =
+            Data.Method[Arg]
+    (RepeatedArrayInstantiation:)class2<public>(t:type) := class:
+        Data<public>:type{_(:t)<computes><decides>:void}
+        Method<public>(Arg:t)<computes><decides>:void =
+            Data[Arg]
+    class3<public> := class<unique> {}
+    C<public>(Arg:[]class3)<computes><decides>:void =
+        Arg.Length = 1
+
+assert:
+    X := RepeatedArrayInstantiation.class3{}
+    Y := RepeatedArrayInstantiation.class1(RepeatedArrayInstantiation.class3):
+        Data := RepeatedArrayInstantiation.class2([]RepeatedArrayInstantiation.class3):
+            Data := RepeatedArrayInstantiation.C
+    Y.Method[array{RepeatedArrayInstantiation.class3{}}]
+    not Y.Method[]
+
+RepeatedMapInstantiation := module:
+    (RepeatedMapInstantiation:)class1<public>(t:subtype(comparable)) := class:
+        Data<public>:class2([t]t)
+        Method<public>(Arg:[t]t)<computes><decides>:void =
+            Data.Method[Arg]
+    (RepeatedMapInstantiation:)class2<public>(t:type) := class:
+        Data<public>:type{_(:t)<computes><decides>:void}
+        Method<public>(Arg:t)<computes><decides>:void =
+            Data[Arg]
+    class3<public> := class<unique> {}
+    D<public>(Arg:[class3]class3)<computes><decides>:void =
+        Arg.Length = 1
+        for (X->Y:Arg). X = Y
+
+assert:
+    X := RepeatedMapInstantiation.class3{}
+    Y := RepeatedMapInstantiation.class1(RepeatedMapInstantiation.class3):
+        Data := RepeatedMapInstantiation.class2([RepeatedMapInstantiation.class3]RepeatedMapInstantiation.class3):
+            Data := RepeatedMapInstantiation.D
+    Z := RepeatedMapInstantiation.class3{}
+    Y.Method[map{Z => Z}]
+    not Y.Method[map{}]
+    not Y.Method[map{Z => RepeatedMapInstantiation.class3{}}]
+
+RepeatedVarInstantiation := module:
+    (RepeatedVarInstantiation:)class1<public>(t:type) := class:
+        Data<public>:class2(tuple(int, t))
+        Method<public>(Arg1:int, Arg2:t):void =
+            Data.Method(Arg1, Arg2)
+    (RepeatedVarInstantiation:)class2<public>(t:type) := class:
+        var Data<public>:t
+        Method<public>(Arg:t):void =
+            set Data = Arg
+    class3<public> := class<unique> {}
+
+assert:
+    X := RepeatedVarInstantiation.class3{}
+    Y := RepeatedVarInstantiation.class1(RepeatedVarInstantiation.class3):
+        Data := RepeatedVarInstantiation.class2(tuple(int, RepeatedVarInstantiation.class3)):
+            Data := (1, X)
+    Y.Data.Data = (1, X)
+    Y.Method(2, X)
+    Y.Data.Data = (2, X)
+    Y.Data.Method(3, X)
+    Y.Data.Data = (3, X)
+    Y.Method(4, X)
+    Y.Data.Data = (4, X)
+
+assert_valid:
+    VarInRecursiveData := module:
+        class1 := class:
+            F(X:t where t:type):tuple(t, class2) = (X, class2{})
+        class2 := class:
+            var Data:?class1 = false

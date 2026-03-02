@@ -2,38 +2,430 @@
 
 using {/Verse.org/Tests/VerseTestScriptCmd}
 
+# Struct definitions for testing
+test_struct := struct:
+    A:int=1
+    B:int=2
+
+medium_test_struct := struct<computes>:
+    S:int=1
+    T:int=2
+    U:int=3
+    V:int=4
+    W:int=5
+    X:int=6
+    Y:int=7
+    Z:int=8
+
+large_test_struct := struct<computes>:
+    A:medium_test_struct=medium_test_struct{}
+    B:medium_test_struct=medium_test_struct{}
+    C:medium_test_struct=medium_test_struct{}
+    D:medium_test_struct=medium_test_struct{}
+    E:medium_test_struct=medium_test_struct{}
+    F:medium_test_struct=medium_test_struct{}
+    G:medium_test_struct=medium_test_struct{}
+    H:medium_test_struct=medium_test_struct{}
+
+LargeTestStructA:large_test_struct = large_test_struct{A:=medium_test_struct{S:=-100}, B:=medium_test_struct{T:=-200}}
+LargeTestStructB:large_test_struct = large_test_struct{A:=medium_test_struct{S:=+100}, B:=medium_test_struct{T:=+200}}
+
+# Basic array types
 array_of_int := class(serializable_class):
     Value:[]int=array{12345}
 
 array_of_char := class(serializable_class):
     Value:[]char=array{0o42}
-    
+
+array_of_char32 := class(serializable_class):
+    Value:[]char32=array{'😀'}
+
+array_of_float := class(serializable_class):
+    Value:[]float=array{3.14}
+
+array_of_logic := class(serializable_class):
+    Value:[]logic=array{true}
+
+array_of_rational := class(serializable_class):
+    Value:[]rational=array{}
+
+array_of_string := class(serializable_class):
+    Value:[]string=array{"test"}
+
+array_of_test_struct := class(serializable_class):
+    Value:[]test_struct=array{test_struct{}}
+
+array_of_large_test_struct := class(serializable_class):
+    Value:[]large_test_struct=array{large_test_struct{}}
+
+# Nested arrays
+array_of_array_of_int := class(serializable_class):
+    Value:[][]int=array{array{1, 2}}
+
+array_of_array_of_char := class(serializable_class):
+    Value:[][]char=array{array{'a', 'b'}}
+
+array_of_array_of_string := class(serializable_class):
+    Value:[][]string=array{array{"hello"}}
+
+# ============================================================================
 # Versioned binary serialization roundtripping tests
+# ============================================================================
 
-assert{Instance := array_of_int{Value:=array{       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
-assert{Instance := array_of_int{Value:=array{1      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
-assert{Instance := array_of_int{Value:=array{2, 0, 3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+# int arrays
+assert{Instance := array_of_int{Value:=array{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{0                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{1                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-1                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{0x7fffffffffffffff         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-9223372036854775808       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{2, 0, 3                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-1, 0, 1, 100, -100        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
 
+# char arrays
 assert{Instance := array_of_char{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{0o00          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
 assert{Instance := array_of_char{Value:=array{'a'           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{0off          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
 assert{Instance := array_of_char{Value:=array{'b', 0o00, 'c'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'\t', '\n', '\r'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
 
+# char32 arrays
+assert{Instance := array_of_char32{Value:=array{                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{0u00000         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{0u0041          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'😀'            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'🚀'            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'好'            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'你', '好'      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{0u10000, 0u1F600}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+
+# float arrays
+assert{Instance := array_of_float{Value:=array{                           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{0.0                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{1.0                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{-1.0                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{3.14159265358979           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{1.7976931348623158e+308    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{2.2250738585072014e-308    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{+Inf                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{-Inf                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{NaN                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{0.0, 1.0, -1.0, +Inf, -Inf }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float); RoundtrippedInstance.Value = Instance.Value}
+
+# logic arrays
+assert{Instance := array_of_logic{Value:=array{                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{false               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{true                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{false, true         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{true, false, true   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = Instance.Value}
+
+# rational arrays
+assert{Instance := array_of_rational{Value:=array{                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{0/1               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{1/2               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{-1/3              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{2/3               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{1/2, -1/2, 1/3    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational); RoundtrippedInstance.Value = Instance.Value}
+
+# string arrays
+assert{Instance := array_of_string{Value:=array{                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{""                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"hello"             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"hello", "world"    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"a\tb\nc"           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"你好", "世界"      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"😀🚀"              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string); RoundtrippedInstance.Value = Instance.Value}
+
+# struct arrays
+assert{Instance := array_of_test_struct{Value:=array{                                      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{}                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=10, B:=20}             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=-1, B:=-2}             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=1}, test_struct{A:=2}  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+# large struct arrays
+assert{Instance := array_of_large_test_struct{Value:=array{                                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_large_test_struct{Value:=array{large_test_struct{}               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_large_test_struct{Value:=array{LargeTestStructA                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_large_test_struct{Value:=array{LargeTestStructA, LargeTestStructB}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+# nested arrays
+assert{Instance := array_of_array_of_int{Value:=array{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{}                   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{1, 2, 3}            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{1}, array{2, 3}     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{}, array{1}, array{}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_array_of_char{Value:=array{                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_char{Value:=array{array{}                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_char{Value:=array{array{'a', 'b'}          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_char{Value:=array{array{'x'}, array{'y','z'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_char); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_array_of_string{Value:=array{                               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_string{Value:=array{array{}                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_string{Value:=array{array{"hello", "world"}        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_string{Value:=array{array{"a"}, array{"b", "c"}    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
 # Unversioned binary serialization roundtripping tests
+# ============================================================================
 
-assert{Instance := array_of_int{Value:=array{       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
-assert{Instance := array_of_int{Value:=array{1      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
-assert{Instance := array_of_int{Value:=array{2, 0, 3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+# int arrays
+assert{Instance := array_of_int{Value:=array{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{0                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{1                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-1                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{0x7fffffffffffffff         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-9223372036854775808       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{2, 0, 3                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
 
+# char arrays
 assert{Instance := array_of_char{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{0o00          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
 assert{Instance := array_of_char{Value:=array{'a'           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{0off          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
 assert{Instance := array_of_char{Value:=array{'b', 0o00, 'c'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
 
-# Text serialization roundtripping  tests
+# char32 arrays
+assert{Instance := array_of_char32{Value:=array{                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'😀'            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'你', '好'      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
 
-assert{Instance := array_of_int{Value:=array{       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
-assert{Instance := array_of_int{Value:=array{1      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
-assert{Instance := array_of_int{Value:=array{2, 0, 3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+# float arrays
+assert{Instance := array_of_float{Value:=array{                           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{0.0                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{+Inf, -Inf, NaN            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
 
+# logic arrays
+assert{Instance := array_of_logic{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{false         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{true          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{false, true   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# rational arrays
+assert{Instance := array_of_rational{Value:=array{             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{1/2          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{-1/3, 2/3    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# string arrays
+assert{Instance := array_of_string{Value:=array{                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"hello"             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"hello", "world"    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# struct arrays
+assert{Instance := array_of_test_struct{Value:=array{                                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{}                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=10, B:=20}            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=1}, test_struct{A:=2} }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := array_of_large_test_struct{Value:=array{                                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_large_test_struct{Value:=array{LargeTestStructA, LargeTestStructB}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+# nested arrays
+assert{Instance := array_of_array_of_int{Value:=array{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{1, 2, 3}       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{1}, array{2, 3}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_array_of_string{Value:=array{                            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_string{Value:=array{array{"a"}, array{"b", "c"} }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Text serialization roundtripping tests
+# ============================================================================
+
+# int arrays
+assert{Instance := array_of_int{Value:=array{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{0                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{1                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-1                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{0x7fffffffffffffff         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{-9223372036854775808       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{2, 0, 3                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# char arrays
 assert{Instance := array_of_char{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{0o00          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
 assert{Instance := array_of_char{Value:=array{'a'           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{0off          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
 assert{Instance := array_of_char{Value:=array{'b', 0o00, 'c'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# char32 arrays
+assert{Instance := array_of_char32{Value:=array{                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'😀'            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char32{Value:=array{'你', '好'      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# float arrays
+assert{Instance := array_of_float{Value:=array{                           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{0.0                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_float{Value:=array{+Inf, -Inf, NaN            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# logic arrays
+assert{Instance := array_of_logic{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{false         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{true          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_logic{Value:=array{false, true   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# rational arrays
+assert{Instance := array_of_rational{Value:=array{             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{1/2          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_rational{Value:=array{-1/3, 2/3    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_rational, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# string arrays
+assert{Instance := array_of_string{Value:=array{                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"hello"             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_string{Value:=array{"hello", "world"    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# struct arrays
+assert{Instance := array_of_test_struct{Value:=array{                                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{}                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=10, B:=20}            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_test_struct{Value:=array{test_struct{A:=1}, test_struct{A:=2} }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := array_of_large_test_struct{Value:=array{                                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := array_of_large_test_struct{Value:=array{LargeTestStructA, LargeTestStructB}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_large_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+# nested arrays
+assert{Instance := array_of_array_of_int{Value:=array{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{1, 2, 3}       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_int{Value:=array{array{1}, array{2, 3}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_array_of_string{Value:=array{                            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_array_of_string{Value:=array{array{"a"}, array{"b", "c"} }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Tests of UE's ConvertFromType functionality to convert between compatible types on load.
+# This behavior should not be visible to Verse users as the backward compatibility constraints should
+# prevent them from making changes to incompatible types.
+# ============================================================================
+
+bp_vm_only{
+# []char --> []int
+# NOTE: Broken - []char uses VerseStringProperty, no ConvertFromType path to ArrayProperty
+# assert{Instance := array_of_char{Value:=array{                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{}}
+# assert{Instance := array_of_char{Value:=array{0o00            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0}}
+# assert{Instance := array_of_char{Value:=array{'a'             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0x61}}
+# assert{Instance := array_of_char{Value:=array{0off            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{-1}} # sign extension from FByteProperty
+# assert{Instance := array_of_char{Value:=array{'a', 'b', 'c'   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0x61, 0x62, 0x63}}
+
+# []char32 --> []int
+assert{Instance := array_of_char32{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{}}
+assert{Instance := array_of_char32{Value:=array{0u00000       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0}}
+assert{Instance := array_of_char32{Value:=array{0u0041        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0x41}}
+assert{Instance := array_of_char32{Value:=array{'😀'          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0x1F600}}
+assert{Instance := array_of_char32{Value:=array{'🚀'          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0x1F680}}
+assert{Instance := array_of_char32{Value:=array{'你', '好'    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0x4F60, 0x597D}}
+
+# []logic --> []int
+assert{Instance := array_of_logic{Value:=array{               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{}}
+assert{Instance := array_of_logic{Value:=array{false          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0}}
+assert{Instance := array_of_logic{Value:=array{true           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{1}}
+assert{Instance := array_of_logic{Value:=array{false, true    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{0, 1}}
+assert{Instance := array_of_logic{Value:=array{true, false, true}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = array{1, 0, 1}}
+
+# []char --> []logic
+# NOTE: Broken - []char uses VerseStringProperty, no ConvertFromType path to ArrayProperty
+# assert{Instance := array_of_char{Value:=array{                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = array{}}
+# assert{Instance := array_of_char{Value:=array{0o00            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = array{false}}
+# assert{Instance := array_of_char{Value:=array{0o01            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = array{true}}
+# assert{Instance := array_of_char{Value:=array{0o00, 0o01      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_logic); RoundtrippedInstance.Value = array{false, true}}
+
+# [][]char --> [][]int
+# NOTE: Broken - []char uses VerseStringProperty, no ConvertFromType path to ArrayProperty
+# assert{Instance := array_of_array_of_char{Value:=array{                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = array{}}
+# assert{Instance := array_of_array_of_char{Value:=array{array{}                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = array{array{}}}
+# assert{Instance := array_of_array_of_char{Value:=array{array{'a', 'b'}          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = array{array{0x61, 0x62}}}
+# assert{Instance := array_of_array_of_char{Value:=array{array{'x'}, array{'y','z'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_array_of_int); RoundtrippedInstance.Value = array{array{0x78}, array{0x79, 0x7a}}}
+} #bp_vm_only
+
+# ============================================================================
+# Tests of deserializing data serialized by old versions.
+# ============================================================================
+
+# Helper functions to generate test data - run these and copy the output to create tests.
+# The output includes the expected value and the serialized data.
+DumpSerializedArrayOfInt(Value:[]int):void=
+    Instance := array_of_int{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingArrayOfInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingArrayOfInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingArrayOfInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedArrayOfString(Value:[]string):void=
+    Instance := array_of_string{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingArrayOfString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingArrayOfString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingArrayOfString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+# Uncomment to generate test data:
+<#>assert:
+    DumpSerializedArrayOfInt(array{})
+    DumpSerializedArrayOfInt(array{0})
+    DumpSerializedArrayOfInt(array{1})
+    DumpSerializedArrayOfInt(array{-1})
+    DumpSerializedArrayOfInt(array{1, 2, 3})
+    DumpSerializedArrayOfInt(array{0x7fffffffffffffff})
+
+<#>assert:
+    DumpSerializedArrayOfString(array{})
+    DumpSerializedArrayOfString(array{""})
+    DumpSerializedArrayOfString(array{"hello"})
+    DumpSerializedArrayOfString(array{"hello", "world"})
+
+# Test helper for deserializing old array data
+TestDeserializingArrayOfInt(ExpectedValue:[]int, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, array_of_int)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected array_of_int\{Value:={DebugToString(ExpectedValue)}\}, but got array_of_int\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingArrayOfString(ExpectedValue:[]string, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, array_of_string)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected array_of_string\{Value:={DebugToString(ExpectedValue)}\}, but got array_of_string\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+bp_vm_only{
+assert{TestDeserializingArrayOfInt[array{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": []\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfInt[array{0}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{0}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{0}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t0\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfInt[array{1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t1\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfInt[array{-1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{-1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{-1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t-1\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfInt[(1, 2, 3), serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o1c}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[(1, 2, 3), serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o03}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[(1, 2, 3), serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t1,\r\n\t\t\t\t\t\t\t2,\r\n\t\t\t\t\t\t\t3\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfInt[array{9223372036854775807}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{9223372036854775807}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfInt[array{9223372036854775807}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t9223372036854775807\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingArrayOfString[array{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[array{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[array{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": []\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfString[array{""}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[array{""}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[array{""}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\"Data\": \"Base64:AAAAAA==\"\r\n\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfString[array{"hello"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}\r{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}hello{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[array{"hello"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}hello{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[array{"hello"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\"Data\": \"Base64:BQAAAGhlbGxv\"\r\n\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingArrayOfString[("hello", "world"), serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}ArrayProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o16}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}hello{0o05}{0o00}{0o00}{0o00}world{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[("hello", "world"), serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o02}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}hello{0o05}{0o00}{0o00}{0o00}world{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingArrayOfString[("hello", "world"), serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ArrayProperty(VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": [\r\n\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\"Data\": \"Base64:BQAAAGhlbGxv\"\r\n\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\"Data\": \"Base64:BQAAAHdvcmxk\"\r\n\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t]\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+}

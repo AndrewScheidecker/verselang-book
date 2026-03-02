@@ -1,0 +1,10 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# We should be able to mutate individual characters of a var string,
+# and then convert it to a native string without incident.
+assert:
+    var X : string = "32"
+    set X[0] = '4'
+    ToInteger(X) = 42

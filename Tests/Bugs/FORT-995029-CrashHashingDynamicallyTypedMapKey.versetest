@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Random}
+
+xy := tuple(int, int)
+
+thing := class:
+    var Translation:xy = (0, 0)
+
+assert:
+    var ObjectMap : [comparable][]thing = map{}
+    for(I := 0..10):
+        Thing := thing:
+            Translation := (GetRandomInt(-10, +10), GetRandomInt(-10, +10))
+        if:                
+            set ObjectMap[Thing.Translation] = (ObjectMap[Thing.Translation] or array{}) + array{Thing}
+
+assert:
+    var ObjectMap : [comparable]thing = map{}
+    for(I := 0..10):
+        Thing := thing:
+            Translation := (GetRandomInt(-10, +10), GetRandomInt(-10, +10))
+        if:
+            set ObjectMap[Thing.Translation] = Thing

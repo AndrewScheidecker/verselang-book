@@ -243,8 +243,8 @@ assert_valid: # Write mutable variable
         Array:[]int = array{3, 4, 5}
         ShouldFail:[]int= for(X:=1 .. 2; Element:=Array[X]; (set Temp = Element; true?)) { X }
 
-assert_semantic_error(3546): # Define mutable variable. Should this be legal?
-    ShouldFail:[]int= for(X:=1 .. 2, var Temp:rational = 10/X) { X } 
+assert_valid:
+    ShouldNotFail():[]int= for(X:=1 .. 2, var Temp:rational = 10/X) { X } 
 
 # Array pair iteration tests.
 assert:
@@ -255,12 +255,13 @@ assert:
     FilteredIndices:[]int=for(Index->Value:array{5, 2, 3, 0}, Index<>2) { Value }
     FilteredIndices=array{5,2,0}
 
-assert_semantic_error(3546      ){ F():void=for(1->X:array{0}){X} }
-assert_semantic_error(3546      ){ F():void=for(X->1:array{0}){X} }
-assert_semantic_error(3524,3546){ F():void=for(X->Y:=array{0}){X} }
+assert_semantic_error(3546            ){ F():void=for(1->X:array{0}){X} }
+assert_semantic_error(3546            ){ F():void=for(X->1:array{0}){X} }
+assert_semantic_error(3549, 3524, 3506){ F():void=for(X->Y:=array{0}){X} }
 
-assert_semantic_error(3524,3546){ F():void=for(X->Y:int=0){X} }
-assert_semantic_error(3546     ){ F():void=for(X->Y:int=0..10){X} }
+assert_semantic_error(3549, 3524, 3506){ F():void=for(X->Y:int=0){X} }
+assert_semantic_error(3546            ){ F():void=for(X->Y:int=0..10){X} }
+
 
 assert:
     A:=for(X->Y:array{10,20}; Z:array{100,200}) {X+Y+Z}

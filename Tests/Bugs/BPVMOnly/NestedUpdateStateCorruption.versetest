@@ -1,0 +1,287 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# BPVM BUG: Nested Update() call corrupts task _State
+#
+# SUMMARY:
+# When Event.Signal() is called from within a rush/sync arm to wake a branch
+# in the SAME coroutine, BPVM triggers a nested Update() call that overwrites
+# the task's _State field. This causes other suspended arms to incorrectly
+# re-execute from their beginning instead of resuming from their Wait point.
+#
+# TRIGGER CONDITIONS:
+# 1. A branch and rush/sync are in the same coroutine (same task)
+# 2. The branch is suspended at Event.Await()
+# 3. A rush/sync arm calls Event.Signal() while other arms are suspended
+# 4. The signal wakes the branch, which is part of the SAME task
+#
+# MECHANISM (step by step):
+#
+#   Initial state at tick 1:
+#   - Task resumes with _State = S_arm1 (rush arm 1's Wait return point)
+#   - Computed jump goes to S_arm1, arm 1 continues executing
+#
+#   When arm 1 calls Event.Signal():
+#   1. event::Signal() iterates SuspendedAwaits and calls Awaiter.Return()
+#   2. The Awaiter's TVerseCall points to this same task (branch is in same coroutine)
+#   3. BPVM's TVerseCall::Return() (VerseTask.h:329-335) calls _Callee->Complete()
+#   4. Complete() calls _Caller->ResumeAt(branch_resume_state)
+#   5. ResumeAt() calls Update(branch_resume_state) -- NESTED UPDATE!
+#   6. Update() sets _State = branch_resume_state, OVERWRITING S_arm1
+#   7. Branch code runs (the code after Event.Await())
+#   8. Nested Update() returns, control returns to Signal(), then to arm 1
+#
+#   After Signal() returns:
+#   - _State is now corrupted (holds branch's state, not arm 1's)
+#   - Arm 1 continues executing its remaining code
+#   - When code reaches arm 2's section, EmitJumpIfResumed checks:
+#       if (TaskGetState() < BeginLabel) -> NOT resuming, run from start
+#       if (TaskGetState() >= BeginLabel) -> resuming, jump to resume point
+#   - Since corrupted _State < arm 2's BeginLabel, arm 2 re-executes!
+#
+# WHY VVM WORKS:
+# VVM represents each branch/rush arm as a distinct VTask with its own
+# YieldPC/YieldFrame/YieldTask fields, updated on resume. When the nested
+# Update occurs, it updates the branch's VTask state, not a shared _State
+# field. Each arm knows where to resume independently.
+#
+# KEY FILES:
+# - VerseTask.h:316-337      - BPVM TVerseCall::Return
+# - VerseTask.cpp:309-334    - Update() sets _State unconditionally
+# - SolarisCodeGenerator.cpp:7526-7546 - EmitJumpIfResumed state comparison
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Concurrency }
+
+############################################
+# Test utilities
+
+Log(Msg:string): void              = CoroUtils.LogEvent(Msg)
+GetLogStr()<transacts>: string     = return CoroUtils.GetEventLogString()
+Wait(Ticks:int)<suspends>: void    = CoroUtils.WaitTicks(Ticks)
+Tick(Ticks:int): void              = CoroUtils.Tick(Ticks)
+
+AssertLogStr(TestName:string, Expected:string, ?BPVMExpected:string = Expected)<transacts><decides>: void =
+    Actual := GetLogStr()
+    verse_vm_only:
+        if (Actual <> Expected):
+            DebugPrint("{TestName} FAIL (VVM): Expected '{Expected}' but got '{Actual}'")
+            false?
+    bp_vm_only:
+        if (Actual <> BPVMExpected):
+            DebugPrint("{TestName} FAIL (BPVM): Expected '{BPVMExpected}' but got '{Actual}'")
+            false?
+
+
+############################################
+# TEST 1: Minimal reproduction with rush
+#
+# This is the simplest case that triggers the bug:
+# - Branch waiting on event
+# - Rush arm 1 signals the event
+# - Rush arm 2 is suspended at Wait
+#
+# Timeline:
+#   Tick 0: A, B, D logged; arm 1 suspends at Wait(1), arm 2 suspends at Wait(2)
+#   Tick 1: Arm 1 resumes, logs C, signals event
+#           VVM:  Branch wakes (W), arm 1 continues (E), rush completes (F)
+#           BPVM: Branch wakes (W), arm 1 continues (E), arm 2 RE-EXECUTES (D!), rush completes (F)
+#   Tick 2: VVM: G logged
+#           BPVM: Arm 2 still running, eventually logs X then G
+#
+# The key symptom: "D" appears twice in BPVM output (once at tick 0, once at tick 1)
+#
+TestMinimalRush()<suspends>: void =
+    Event := event(){}
+
+    Log("A")
+    branch:
+        Event.Await()
+        Log("W")
+
+    rush:
+        block:
+            Log("B")
+            Wait(1)
+            Log("C")
+            Event.Signal()
+            Log("E")
+        block:
+            Log("D")
+            Wait(2)
+            Log("X")
+    Log("F")
+    Wait(1)
+    Log("G")
+
+assert:
+    spawn{TestMinimalRush()}
+    Tick(4)
+    # VVM: A, B, D at tick 0; C, W, E, F at tick 1; G at tick 2; empty tick 3
+    # BPVM: A, B, D at tick 0; C, W, E, D (re-exec!), F at tick 1; X, G at tick 2
+    AssertLogStr["TestMinimalRush", "ABD,CWEF,G,,", ?BPVMExpected:="ABD,CWEDF,XG,,"]
+
+
+############################################
+# TEST 2: Minimal reproduction with sync
+#
+# Same bug with sync instead of rush. Since sync waits for all arms,
+# the re-execution of arm 2 is visible in the output order.
+#
+# Timeline:
+#   Tick 0: A, B, D logged; both arms suspend
+#   Tick 1: Arm 1 resumes, logs C, signals event
+#           VVM:  Branch wakes (W), arm 1 continues (E)
+#           BPVM: Branch wakes (W), arm 1 continues (E), arm 2 RE-EXECUTES (D!)
+#   Tick 2: Arm 2 resumes (or re-runs), logs F, sync completes (Z)
+#
+TestMinimalSync()<suspends>: void =
+    Event := event(){}
+
+    Log("A")
+    branch:
+        Event.Await()
+        Log("W")
+
+    sync:
+        block:
+            Log("B")
+            Wait(1)
+            Log("C")
+            Event.Signal()
+            Log("E")
+        block:
+            Log("D")
+            Wait(2)
+            Log("F")
+    Log("Z")
+
+assert:
+    spawn{TestMinimalSync()}
+    Tick(3)
+    # VVM: D appears once; BPVM: D appears twice
+    AssertLogStr["TestMinimalSync", "ABD,CWE,FZ,", ?BPVMExpected:="ABD,CWED,FZ,"]
+
+
+############################################
+# TEST 3: Multiple suspended arms
+#
+# With 3 arms, we can see that ALL suspended arms re-execute, not just one.
+# This confirms the _State corruption affects the entire concurrency block.
+#
+TestMultipleArms()<suspends>: void =
+    Event := event(){}
+
+    Log("A")
+    branch:
+        Event.Await()
+        Log("W")
+
+    sync:
+        block:
+            Log("1")
+            Wait(1)
+            Log("S")  # Signal
+            Event.Signal()
+            Log("E")
+        block:
+            Log("2")
+            Wait(2)
+            Log("F")
+        block:
+            Log("3")
+            Wait(3)
+            Log("G")
+    Log("Z")
+
+assert:
+    spawn{TestMultipleArms()}
+    Tick(4)
+    # VVM: A,1,2,3 at tick 0; S,W,E at tick 1; F at tick 2; G,Z at tick 3
+    # BPVM: Arms 2 and 3 both re-execute after signal
+    AssertLogStr["TestMultipleArms", "A123,SWE,F,GZ,", ?BPVMExpected:="A123,SWE23,F,GZ,"]
+
+
+############################################
+# TEST 4: Nested rush inside sync
+#
+# Tests whether the bug propagates through nested concurrency structures.
+# The nested rush is inside sync arm 1, and sync arm 2 (D) is also suspended.
+#
+# Note: In rush, when arm 1 completes, arm 2 (R2) is CANCELLED - so X never
+# appears in VVM. In BPVM, the state corruption causes R2 to re-execute.
+#
+TestNestedConcurrency()<suspends>: void =
+    Event := event(){}
+
+    Log("A")
+    branch:
+        Event.Await()
+        Log("W")
+
+    sync:
+        block:
+            rush:
+                block:
+                    Log("R1")
+                    Wait(1)
+                    Log("S")
+                    Event.Signal()
+                    Log("E")
+                block:
+                    Log("R2")
+                    Wait(2)
+                    Log("X")
+            Log("F")
+        block:
+            Log("D")
+            Wait(3)
+            Log("G")
+    Log("Z")
+
+assert:
+    spawn{TestNestedConcurrency()}
+    Tick(4)
+    # VVM: Rush arm R2 is cancelled when R1 wins, so X never appears.
+    #      S, W (branch wakes), E, F on tick 1; G, Z on tick 3
+    # BPVM: State corruption causes R2 AND D to re-execute. X appears because
+    #       R2 restarts and runs to completion instead of being cancelled.
+    AssertLogStr["TestNestedConcurrency", "AR1R2D,SWEF,,GZ,", ?BPVMExpected:="AR1R2D,SWER2FD,X,GZ,"]
+
+
+############################################
+# TEST 5: Signal from defer
+#
+# What happens if the signal comes from a defer block?
+# The defer runs when arm 1's scope exits (after Wait completes).
+#
+TestSignalFromDefer()<suspends>: void =
+    Event := event(){}
+
+    Log("A")
+    branch:
+        Event.Await()
+        Log("W")
+
+    sync:
+        block:
+            defer:
+                Log("d")
+                Event.Signal()
+            Log("B")
+            Wait(1)
+            Log("C")
+        block:
+            Log("D")
+            Wait(2)
+            Log("F")
+    Log("Z")
+    Wait(1)
+    Log("G")
+
+assert:
+    spawn{TestSignalFromDefer()}
+    Tick(4)
+    # VVM: Arm 1 resumes at tick 1, logs C, scope exits, defer runs (d), signal wakes W
+    #      All on tick 1. Then F at tick 2, Z, then G.
+    # BPVM: Same but D re-executes due to state corruption
+    AssertLogStr["TestSignalFromDefer", "ABD,CdW,FZ,G,", ?BPVMExpected:="ABD,CdWD,FZ,G,"]

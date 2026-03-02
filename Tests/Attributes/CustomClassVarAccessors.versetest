@@ -399,10 +399,9 @@ assert:
         X := GetAnInt("A", 5)
         block:
             CoroUtils.LogEvent("B")
-    bp_vm_only{LogCheck("ABS")}
-    # (Jay C.) the VerseVM runs the 'setter' from the 'InitializeVar' opcode emitted when compiling X in the archetype.
-    # I'm unsure why the BPVM is ordered the way it is but since the VerseVM ordering seems more correct just case-ing the differences
-    verse_vm_only{LogCheck("ASB")}
+    # Without leniency, setters (and blocks) are postponed until all fields are initialized.
+    strict_only{LogCheck("ABS")}
+    lenient_only{LogCheck("ASB")}
 assert:
     G := g:
         block:

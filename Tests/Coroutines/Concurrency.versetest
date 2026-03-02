@@ -1,6 +1,7 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
 using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Concurrency }
 
 ############################################
 # Helper functions
@@ -757,44 +758,6 @@ assert:
     numCorosInTheEnd = 0
     R.Num = 130 and CoroUtils.GetEventLogString() = "ABI,,CDEG,J,FK"
 
-verse_vm_todo{
-# Test returning from a concurrency macro subexpression.
-AsyncCallFunctionAndLogReturnedString(F(ATicks:int, BTicks:int)<suspends>:string, ATicks:int, BTicks:int)<suspends>:void=
-    Result := F(ATicks, BTicks)
-    CoroUtils.LogEvent(Result)
-
-ReturnFromSync(ATicks:int, BTicks:int)<suspends>:string=
-    sync:
-        block{defer{CoroUtils.LogEvent("a")}; CoroUtils.WaitTicks(ATicks); CoroUtils.LogEvent("A"); @ignore_unreachable return "1"}
-        block{defer{CoroUtils.LogEvent("b")}; CoroUtils.WaitTicks(BTicks); CoroUtils.LogEvent("B"); @ignore_unreachable return "2"}
-    return "3"
-
-ReturnFromRace(ATicks:int, BTicks:int)<suspends>:string=
-    race:
-        block{defer{CoroUtils.LogEvent("a")}; CoroUtils.WaitTicks(ATicks); CoroUtils.LogEvent("A"); @ignore_unreachable return "1"}
-        block{defer{CoroUtils.LogEvent("b")}; CoroUtils.WaitTicks(BTicks); CoroUtils.LogEvent("B"); @ignore_unreachable return "2"}
-    return "3"
-
-ReturnFromRush(ATicks:int, BTicks:int)<suspends>:string=
-    rush:
-        block{defer{CoroUtils.LogEvent("a")}; CoroUtils.WaitTicks(ATicks); CoroUtils.LogEvent("A"); @ignore_unreachable return "1"}
-        block{defer{CoroUtils.LogEvent("b")}; CoroUtils.WaitTicks(BTicks); CoroUtils.LogEvent("B"); @ignore_unreachable return "2"}
-    return "3"
-
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromSync, 1, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromSync, 1, 2)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromSync, 2, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Bba2,"}
-
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRace, 1, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRace, 1, 2)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRace, 2, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Bba2,"}
-
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRush, 1, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRush, 1, 2)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
-assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRush, 2, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Bba2,"}
-} #verse_vm_todo
-
-
 ############################################
 # Test native module coroutines
 
@@ -1509,4 +1472,38 @@ TestBatSignalRace3()<suspends>:void =
 
 assert:
     spawn{TestBatSignalRace3()}
+    CoroUtils.Tick(1)
+
+# TODO(SOL-9046): BPVM fails to detect this runtime error
+verse_vm_only{
+TestRollbackNativeDefer(Task:task(void))<suspends>:int=
+    # Register an open native defer, which runs and then clears itself on resume.
+    Task.Await()
+    # Roll back the resume, then run the defer again for task termination.
+    Err()
+
+assert_runtime_error:
+    Task := spawn{NextTick()}
+    spawn{TestRollbackNativeDefer(Task)}
+} #verse_vm_only
+
+<# Test case for multiple NativeDefers being present the same time
+- Create a task from native and store the FVerseTask
+- While task is running:
+    - Cancel the task from non-suspending code (registers a defer via VTask::Cancel)
+    - Suspend the task (registers defer via CoroUtils::WaitTicks)
+        - Its this which leads us to multiple defers being registerd as cancelling a running task 
+        won't cause it to 'stop' and run said defer. Rather, it will continue until it suspends via WaitTicks() 
+        which also registers a defer and both of these will be run via the interpreters YIELD logic as we suspend
+#>
+
+test_native_defers_impl := class(test_native_defers):
+    TaskA<override>()<suspends>:void =
+        loop:
+            CoroUtils.WaitTicks(1)
+            CancelTask()
+
+assert:
+    Obj := test_native_defers_impl{}
+    Obj.SpawnTask()
     CoroUtils.Tick(1)

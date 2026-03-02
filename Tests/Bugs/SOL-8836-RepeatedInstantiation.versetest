@@ -1,0 +1,17 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+payload := class {}
+
+my_class(t:type) := class:
+    Event:subscribable_event_intrnl(tuple(int,t)) = subscribable_event_intrnl(tuple(int,t)){}
+    Foo(Y:int, P:t):void=
+        Event.Signal(Y, P)
+
+Bar(Y:int, P:payload):void = {}
+
+assert:
+    C := my_class(payload){}
+    P := payload{}
+    C.Event.Subscribe(Bar)
+    C.Event.Signal(2, P)
+    C.Foo(2, P)

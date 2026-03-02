@@ -356,3 +356,75 @@ assert_semantic_error(3552, 3552):
         C<public>:int = 44
 
     Value:int = M.A + M.B + M.C
+
+# An error should be produced if a definition in an API package depends on anything that is less available than it is.
+assert_valid:
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 2}
+            X<public>:?c = false
+assert_valid:
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 3}
+            X<public>:?c = false
+assert_semantic_error(3593):
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            X<public>:?c = false
+assert_semantic_error(3593):
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 1}
+            X<public>:?c = false
+
+assert_valid:
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 2}
+            F<public>():?c = false
+assert_semantic_error(3593):
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 1}
+            F<public>():?c = false
+    
+assert_valid:
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 2}
+            F<public>(:c):void = false
+assert_semantic_error(3593):
+    vpackage(P,/Verse.org/A,?Scope:=InternalAPI):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion := 2}
+            c<public> := class {}
+            @available{MinUploadedAtFNVersion := 1}
+            F<public>(:c):void = false
+
+# Only produce the error for InternalAPI/PublicAPI packages.
+assert_semantic_error(3593){vpackage(P0,/Verse.org/A,?Scope:=PublicAPI  ){snippet{using { /Verse.org/Native }; @available{MinUploadedAtFNVersion := 2} c<public> := class {}}}; vpackage(P1,/A,?Scope:=PublicAPI  , ?Dependencies:=(P0)){snippet{using{/Verse.org/A}; X<public>:?c = false}}}
+assert_semantic_error(3593){vpackage(P0,/Verse.org/A,?Scope:=InternalAPI){snippet{using { /Verse.org/Native }; @available{MinUploadedAtFNVersion := 2} c<public> := class {}}}; vpackage(P1,/A,?Scope:=InternalAPI, ?Dependencies:=(P0)){snippet{using{/Verse.org/A}; X<public>:?c = false}}}
+assert_valid               {vpackage(P0,/Verse.org/A,?Scope:=PublicAPI  ){snippet{using { /Verse.org/Native }; @available{MinUploadedAtFNVersion := 2} c<public> := class {}}}; vpackage(P1,/A,?Scope:=PublicUser , ?Dependencies:=(P0)){snippet{using{/Verse.org/A}; X<public>:?c = false}}}

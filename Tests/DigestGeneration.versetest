@@ -1,15 +1,8 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
 # Basic digest generation tests.
-
-assert_digest_generated(
-# Module import path: /A/Module
-Module<public> := module:
-    Class<public> := class:
-        FieldA<public>():void = external{}
-
-        FieldC<public>:int = external{}
-){
+assert_digest_generated
+{
     vpackage(P0, /A):
         snippet:
             Module<public> := module:
@@ -17,23 +10,19 @@ Module<public> := module:
                     FieldA<public>():void = {}
                     FieldB():void = {}
                     FieldC<public>:int = 42
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+                FieldA<public>():void = external {}
+
+                FieldC<public>:int = external {}
 }
 
-assert_digest_generated(
-# Module import path: /A/Module
-Module<public> := module:
-    (/A/Module:)Class<public> := class:
-        FieldA<public>():void = external{}
-
-        FieldC<public>:int = external{}
-
-# Module import path: /A/Module2
-Module2<public> := module:
-    (/A/Module2:)Class<public> := class:
-        FieldD<public>():void = external{}
-
-        FieldF<public>:int = external{}
-){
+# Test with multiple snippets.
+assert_digest_generated
+{
     vpackage(P0, /A):
         snippet:
             Module<public> := module:
@@ -41,60 +30,83 @@ Module2<public> := module:
                     FieldA<public>():void = {}
                     FieldB():void = {}
                     FieldC<public>:int = 42
-    
+
         snippet:
             Module2<public> := module:
                 Class<public> := class:
                     FieldD<public>():void = {}
                     FieldE():void = {}
                     FieldF<public>:int = 42
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        # Module import path: /A/Module
+        Module<public> := module:
+            (/A/Module:)Class<public> := class:
+                FieldA<public>():void = external{}
+
+                FieldC<public>:int = external{}
+
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            (/A/Module2:)Class<public> := class:
+                FieldD<public>():void = external{}
+
+                FieldF<public>:int = external{}
 }
 
-assert_digest_generated(
-# Module import path: /A/Module
-Module<public> := module:
-    Class<public> := class:
-        FieldA<public>():void = external{}
-){
-    vpackage(P0, /A):
+# Basic test of public/epic_internal digests.
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
         snippet:
             Module<public> := module:
                 Class<public> := class:
                     FieldA<public>():void = {}
                     FieldB():void = {}
-}    
+                    FieldC<epic_internal>():void = {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+                FieldA<public>():void = external{}
+
+    expected_digest(Package := P0, ?Variant := PublicAndEpicInternal):
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+                FieldA<public>():void = external{}
+
+                FieldC<epic_internal>():void = external{}
+}
 
 # TODO: A non-visible interface field should not generate an overridden field definition in the digest,
 # but today, we make them show up anyway because the asset manifest today relies on this implementation detail for
 # generating `scoped` definitions regardless that are preserved to the final asset digest.
-assert_digest_generated(
-# Module import path: /A/Module
-Module<public> := module:
-    Class<public> := class:
-        FieldA<override>():void = external{}
-
-        FieldB<public>():void = external{}
-){
+assert_digest_generated
+{
     vpackage(P0, /A):
         snippet:
             Module<public> := module:
                 Interface := interface:
                     FieldA<scoped{/A}>():void = {}
-    
+
                 Class<public> := class(Interface):
                     FieldA<override>():void = {}
                     FieldB<public>():void = {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+                FieldA<override>():void = external{}
+
+                FieldB<public>():void = external{}
 }
 
 # Interfaces that have fields with default values should not have their IR-generated definitions show up in the digest.
-assert_digest_generated(
-# Module import path: /A/Module
-Module<public> := module:
-    Class<public> := class:
-        FieldA<override>:int = external{}
-
-        FieldB<override>():int = external{}
-){
+assert_digest_generated
+{
     vpackage(P0, /A):
         snippet:
             Module<public> := module:
@@ -105,70 +117,306 @@ Module<public> := module:
                 Class<public> := class(Interface):
                     FieldA<override>:int = 84
                     FieldB<override>():int = 100
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+                FieldA<override>:int = external{}
+
+                FieldB<override>():int = external{}
 }
 
+# Check that the correct digest is generated appropriately for different accessibility contexts.
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            Module<public> := module:
+                Interface<epic_internal>(t:type) := interface:
+                    Method():t
+
+                SubInterface<epic_internal> := interface(Interface(float)) {}
+                Class<epic_internal> := class(SubInterface):
+                    Method<override>():float = { return 0.0 }
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        # Module import path: /A/Module
+        Module<public> := module:
+
+    expected_digest(Package := P0, ?Variant := PublicAndEpicInternal):
+        # Module import path: /A/Module
+        Module<public> := module:
+            Interface<epic_internal>(t:type) := interface:
+
+                (/A/Module/Interface:)Module_Interface_Variance<private>():tuple(t) = external {}
+
+            SubInterface<epic_internal> := interface(Interface(float)):
+
+            Class<epic_internal> := class(SubInterface):
+}
+
+# Test that using an alias to act as the accessibility specifier works.
+# assert_digest_generated
+# {
+#     vpackage(P0, /A, ?Scope := InternalUser):
+#         snippet:
+#             ModuleTest<public> := module:
+#                 alias_scope<epic_internal> := epic_internal
+#                 Interface<alias_scope>(t:type) := interface:
+#                     Method():t
+
+#                 SubInterface<alias_scope> := interface(Interface(float)) {}
+#                 Class<alias_scope> := class(SubInterface):
+#                     Method<override>():float = { return 0.0 }
+
+#     expected_digest(Package := P0, ?Variant := PublicOnly):
+#         # Module import path: /A/ModuleTest
+#         ModuleTest<public> := module:
+
+#     # TODO: In the future, we want `Interface`/`SubInterface`/`Class` to show `alias_scope` instead of `epic_internal`.
+#     expected_digest(Package := P0, ?Variant := PublicAndEpicInternal):
+#         # Module import path: /A/ModuleTest
+
+#         ModuleTest<public> := module:
+
+#             alias_scope<epic_internal> := epic_internal
+
+#             Interface<epic_internal>(t:type) := interface:
+
+#                 (/A/ModuleTest/Interface:)ModuleTest_Interface_Variance<private>:?type {_():tuple(t)} = external {}
+
+#             SubInterface<epic_internal> := interface(Interface(float)):
+
+#             Class<epic_internal> := class(SubInterface):
+# }
+
+# Test that using an alias with an access specifier that is also an alias works.
+# assert_digest_generated
+# {
+#     vpackage(P0, /A, ?Scope := InternalUser):
+#         snippet:
+#             ModuleTest<public> := module:
+#                 alias_scope<alias_scope> := epic_internal
+#                 Interface<alias_scope>(t:type) := interface:
+#                     Method():t
+
+#                 SubInterface<alias_scope> := interface(Interface(float)) {}
+#                 Class<alias_scope> := class(SubInterface):
+#                     Method<override>():float = { return 0.0 }
+
+#     expected_digest(Package := P0, ?Variant := PublicOnly):
+#         # Module import path: /A/ModuleTest
+#         ModuleTest<public> := module:
+
+#     # TODO: In the future, we want `Interface`/`SubInterface`/`Class` to show `alias_scope` instead of `epic_internal`.
+#     expected_digest(Package := P0, ?Variant := PublicAndEpicInternal):
+#         # Module import path: /A/ModuleTest
+
+#         ModuleTest<public> := module:
+
+#             alias_scope<epic_internal> := epic_internal
+
+#             Interface<epic_internal>(t:type) := interface:
+
+#                 (/A/ModuleTest/Interface:)ModuleTest_Interface_Variance<private>:?type {_():tuple(t)} = external {}
+
+#             SubInterface<epic_internal> := interface(Interface(float)):
+
+#             Class<epic_internal> := class(SubInterface):
+# }
+
 # No variance requirement
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class {}
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class{}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
 }
 
 # Covariant requirement
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_():tuple(t)} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        Data<private>:?t = false
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data<private>:?t = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>():tuple(t) = external{}
 }
 
 # Contravariant requirement
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_(:t):tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        Method<private>(:t):void = {}
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Method<private>(:t):void = {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>(:t):tuple() = external{}
 }
 
 # Covariant and contravariant requirement
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_(:t):tuple(t)} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        Method<private>(X:t):t = X
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Method<private>(X:t):t = X
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>(:t):tuple(t) = external{}
 }
 
 # Multiple variance requirements
-assert_digest_generated(
-    class1<public>(t:type, u:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_(:t):tuple(t, u)} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type, u:type) := class:
-        Method<private>(X:t):t = X
-        Data<private>:?u = false
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type, u:type) := class:
+                Method<private>(X:t):t = X
+                Data<private>:?u = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type, u:type) := class:
+            (/A/class1:)class1_Variance<private>(:t):tuple(t, u) = external{}
+}
+
+# Nested variance (only immediate parametric types should be used).
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data<private>:?t = false
+            class2<public>(u:type) := class:
+                Data1<private>:class1(u) = class1(u){}
+                Data2<private>:class1(int) = class1(int){}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>():tuple(t) = external{}
+        class2<public>(u:type) := class:
+            (/A/class2:)class2_Variance<private>():tuple(u) = external{}
+}
+
+# Var variance requirements
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                var Data<private>:?t = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            var (/A/class1:)class1_VarVariance<private>:?tuple(t) = external{}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                var Data<private>:?tuple(t, t) = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            var (/A/class1:)class1_VarVariance<private>:?tuple(t) = external{}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                var Data<private>:?type{_(:t):void} = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            var (/A/class1:)class1_VarVariance<private>:?tuple(t) = external{}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                var Data<private>:?type{_(:t):t} = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            var (/A/class1:)class1_VarVariance<private>:?tuple(t) = external{}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type, u:type) := class:
+                var Data1<private>:?t = false
+                var Data2<private>:?u = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type, u:type) := class:
+            var (/A/class1:)class1_VarVariance<private>:?tuple(t, u) = external{}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type, u:type) := class:
+                Data1<private>:?t = false
+                var Data2<private>:?u = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type, u:type) := class:
+            (/A/class1:)class1_Variance<private>():tuple(t) = external{}
+            var (/A/class1:)class1_VarVariance<private>:?tuple(u) = external{}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data1<private>:?t = false
+                var Data2<private>:?t = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>():tuple(t) = external{}
+            var (/A/class1:)class1_VarVariance<private>:?tuple(t) = external{}
 }
 
 # Variance and subclasses
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+<# Disabled pending fix for FORT-1017607
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data:?t = false
+            class2<public>(t:type) := class(class1(t)) {}
 
-    class2<public>(t:type) := class(class1(t)):
-        (/A/class2:)class2_Variance<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class {}
-    class2<public>(t:type) := class(class1(t)) {}
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>():tuple(t) = external{}
+        class2<public>(t:type) := class(class1(t)):
+            @available{MinUploadedAtFNVersion:=4000}
+            (/A/class2:)class2_Variance_Inherited<private>():tuple(t) = external{}
 }
+#>
 
 assert_valid:
     class1<public>(t:type) := class:
@@ -176,85 +424,527 @@ assert_valid:
     class2<public>(t:type) := class(class1(t)):
         F():int = class2_Variance
 
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                class2_Variance<public>:int = 0
+            class2<public>(t:type) := class(class1(t)):
+                Data:?t = false
 
-        class2_Variance<public>:int = external{}
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            class2_Variance<public>:int = external{}
+        class2<public>(t:type) := class(class1(t)):
+            (/A/class2:)class2_Variance0<private>():tuple(t) = external{}
+}
 
-    class2<public>(t:type) := class(class1(t)):
-        (/A/class2:)class2_Variance0<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        class2_Variance<public>:int = 0
-    class2<public>(t:type) := class(class1(t)) {}
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                Class<public> := class{}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion:=1337}
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                Class<public> := class{}
+
+            @available{MinUploadedAtFNVersion:=1338}
+            Module2<public> := module:
+                Class<public> := class{}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion:=1337}
+        # Module import path: /A/Module
+        Module<public> := module:
+            (/A/Module:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1338}
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            (/A/Module2:)Class<public> := class:
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            using { /A/Module }
+            @available{MinUploadedAtFNVersion:=1338}
+            Module2<public> := module:
+                Class2<public> := (Module:)Class
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion:=1337}
+        # Module import path: /A/Module
+        Module<public> := module:
+            Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1338}
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            using {/A}
+            Class2<public> := (/A:)Module.Class
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            Module<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            Module2<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1339}
+            Module3<public> := module:
+                using { /A/Module }
+                using { /A/Module2 }
+                Foo<public>(C1:(/A/Module:)Class, C2:(/A/Module2:)Class):void := {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        # Module import path: /A/Module
+        Module<public> := module:
+            (/A/Module:)Class<public> := class:
+
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            (/A/Module2:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1339}
+        # Module import path: /A/Module3
+        Module3<public> := module:
+            using { /A/Module2 }
+            using { /A/Module }
+            Foo<public>(C1:(/A/Module:)Class, C2:(/A/Module2:)Class):void = external {}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            Module<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1338}
+            Module2<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1339}
+            Module3<public> := module:
+                using { /A/Module }
+                using { /A/Module2 }
+                Foo<public>(C1:(/A/Module:)Class, C2:(/A/Module2:)Class):void := {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        # Module import path: /A/Module
+        Module<public> := module:
+            (/A/Module:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1338}
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            (/A/Module2:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1339}
+        # Module import path: /A/Module3
+        Module3<public> := module:
+            using { /A }
+            using { /A/Module }
+            Foo<public>(C1:(/A/Module:)Class, C2:(/A:)Module2.Class):void = external {}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1338}
+            Module2<public> := module:
+                Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1339}
+            Module3<public> := module:
+                using { /A/Module }
+                using { /A/Module2 }
+                Foo<public>(C1:(/A/Module:)Class, C2:(/A/Module2:)Class):void := {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion:=1337}
+        # Module import path: /A/Module
+        Module<public> := module:
+            (/A/Module:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1338}
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            (/A/Module2:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1339}
+        # Module import path: /A/Module3
+        Module3<public> := module:
+            using { /A }
+            Foo<public>(C1:(/A:)Module.Class, C2:(/A:)Module2.Class):void = external {}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            Module<public> := module:
+                @available{MinUploadedAtFNVersion:=1337}
+                InnerModule<public> := module:
+                    Class<public> := class{}
+
+            using { /Verse.org/Native }
+            Module2<public> := module:
+                @available{MinUploadedAtFNVersion:=1338}
+                InnerModule<public> := module:
+                    Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1339}
+            Module3<public> := module:
+                using { /A/Module/InnerModule }
+                using { /A/Module2/InnerModule }
+                Foo<public>(C1:(/A/Module/InnerModule:)Class, C2:(/A/Module2/InnerModule:)Class):void := {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        # Module import path: /A/Module
+        Module<public> := module:
+            using {/Verse.org/Native}
+            @available{MinUploadedAtFNVersion:=1337}
+            # Module import path: /A/Module/InnerModule
+            (/A/Module:)InnerModule<public> := module:
+                (/A/Module/InnerModule:)Class<public> := class:
+
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            using {/Verse.org/Native}
+            @available{MinUploadedAtFNVersion:=1338}
+            # Module import path: /A/Module2/InnerModule
+            (/A/Module2:)InnerModule<public> := module:
+                (/A/Module2/InnerModule:)Class<public> := class:
+
+        @available {MinUploadedAtFNVersion := 1339}
+        # Module import path: /A/Module3
+        Module3<public> := module:
+            using {/A/Module2 }
+            using {/A/Module }
+            Foo<public>(C1:(/A/Module:)InnerModule.Class, C2:(/A/Module2:)InnerModule.Class):void = external {}
+}
+
+assert_digest_generated
+{
+    vpackage(P0, /A, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                InnerModule<public> := module:
+                    Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1338}
+            Module2<public> := module:
+                InnerModule<public> := module:
+                    Class<public> := class{}
+
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1339}
+            Module3<public> := module:
+                using { /A/Module/InnerModule }
+                using { /A/Module2/InnerModule }
+                Foo<public>(C1:(/A/Module/InnerModule:)Class, C2:(/A/Module2/InnerModule:)Class):void := {}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion:=1337}
+        # Module import path: /A/Module
+        Module<public> := module:
+        # Module import path: /A/Module/InnerModule
+            (/A/Module:)InnerModule<public> := module:
+                (/A/Module/InnerModule:)Class<public> := class:
+
+        @available{MinUploadedAtFNVersion:=1338}
+        # Module import path: /A/Module2
+        Module2<public> := module:
+            # Module import path: /A/Module2/InnerModule
+            (/A/Module2:)InnerModule<public> := module:
+                (/A/Module2/InnerModule:)Class<public> := class:
+
+        @available {MinUploadedAtFNVersion := 1339}
+        # Module import path: /A/Module3
+        Module3<public> := module:
+            using {/A}
+            Foo<public>(C1:(/A:)Module.InnerModule.Class, C2:(/A:)Module2.InnerModule.Class):void = external {}
 }
 
 # Variance newlines
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+<# Disabled pending fix for FORT-1017607
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data<public>:?t = false
+            class2<public>(t:type) := class(class1(t)):
+                Data2<public>:?t = false
 
-        Data<public>:int = external{}
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance<private>():tuple(t) = external {}
+            Data<public>:?t = external {}
 
-    class2<public>(t:type) := class(class1(t)):
-        (/A/class2:)class2_Variance<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        Data<public>:int = 0
-    class2<public>(t:type) := class(class1(t)) {}
+        class2<public>(t:type) := class(class1(t)):
+            @available {MinUploadedAtFNVersion := 4000}
+            (/A/class2:)class2_Variance_Inherited<private>():tuple(t) = external {}
+            (/A/class2:)class2_Variance<private>():tuple(t) = external {}
+            Data2<public>:?t = external {}    
 }
+#>
 
 # "Variance" name taken
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance0<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        class1_Variance:int = 0
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data:?t = false
+                class1_Variance:int = 0
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance0<private>():tuple(t) = external{}
 }
 
-assert_digest_generated(
-    class1_Variance<public>:int = external{}
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1_Variance<public>:int = 0
+            class1<public>(t:type) := class:
+                Data:?t = false
 
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance0<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1_Variance<public>:int = 0
-    class1<public>(t:type) := class {}
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1_Variance<public>:int = external{}
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance0<private>():tuple(t) = external{}
 }
 
 # "Variance" and "Variance0" name taken
-assert_digest_generated(
-    class1<public>(t:type) := class:
-        (/A/class1:)class1_Variance1<private>:?type{_():tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    class1<public>(t:type) := class:
-        class1_Variance:int = 0
-        class1_Variance0:int = 0
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            class1<public>(t:type) := class:
+                Data:?t = false
+                class1_Variance:int = 0
+                class1_Variance0:int = 0
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        class1<public>(t:type) := class:
+            (/A/class1:)class1_Variance1<private>():tuple(t) = external{}
 }
 
 # `struct` do not need to have `Variance`, as they cannot have hidden data.
-assert_digest_generated(
-    struct1<public>(t:type) := struct:
-        Data:?t = external{}
-){
-vpackage(P0, /A). snippet:
-    struct1<public>(t:type) := struct:
-        Data:?t = false
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            struct1<public>(t:type) := struct:
+                Data:?t = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        struct1<public>(t:type) := struct:
+            Data:?t = external{}
 }
 
 # `interface` requirement
-assert_digest_generated(
-    interface1<public>(t:type) := interface:
-        (/A/interface1:)interface1_Variance<private>:?type{_(:t):tuple()} = external{}
-){
-vpackage(P0, /A). snippet:
-    interface1<public>(t:type) := interface:
-        Data<private>:?(t -> void) = false
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            interface1<public>(t:type) := interface:
+                Data<private>:?(t -> void) = false
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        interface1<public>(t:type) := interface:
+            (/A/interface1:)interface1_Variance<private>(:t):tuple() = external{}
+}
+
+# Inheriting variance constraints from a non-public interface.
+<# Disabled pending fix for FORT-1017607
+assert_digest_generated
+{
+    vpackage(P0, /A):
+        snippet:
+            internal_interface(t:type) := interface:
+                Data<private>:?t = false
+            public_interface<public>(t:type) := interface(internal_interface(t)){}
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        public_interface<public>(t:type) := interface:
+            @available {MinUploadedAtFNVersion := 4000}
+            (/A/public_interface:)public_interface_Variance_Inherited<private>():tuple(t) = external {}
+}
+#>
+
+assert_digest_generated
+{
+    vpackage(P1, /Verse.org/Test, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            Module<public> := module:
+                @doc("Enum type doc")
+                @available{MinUploadedAtFNVersion:=1337}
+                test_enum<public> := enum:
+                    @doc("Enum value doc")
+                    First
+
+    expected_digest(Package := P1, ?Variant := PublicOnly):
+        # Module import path: /Verse.org/Test/Module
+        Module<public> := module:
+            using {/Verse.org/Native}
+            @available{MinUploadedAtFNVersion := 1337}
+            # Enum type doc
+            test_enum<public> := enum:
+                # Enum value doc
+                First
+}
+
+assert_digest_generated
+{
+    vpackage(P1, /Verse.org/Test, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                @doc("Enum type doc")
+                test_enum<public> := enum:
+                    @doc("Enum value doc")
+                    First
+
+    expected_digest(Package := P1, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion := 1337}
+        # Module import path: /Verse.org/Test/Module
+        Module<public> := module:
+            # Enum type doc
+            test_enum<public> := enum:
+                # Enum value doc
+                First
+}
+
+assert_digest_generated
+{
+    vpackage(P1, /Verse.org/Test, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                @doc("Enum type doc")
+                @available{MinUploadedAtFNVersion:=1338}
+                test_enum<public> := enum:
+                    @doc("Enum value doc")
+                    First
+
+    expected_digest(Package := P1, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available{MinUploadedAtFNVersion := 1337}
+        # Module import path: /Verse.org/Test/Module
+        Module<public> := module:
+            using {/Verse.org/Native}
+            @available{MinUploadedAtFNVersion:=1338}
+            # Enum type doc
+            test_enum<public> := enum:
+                # Enum value doc
+                First
+}
+
+assert_digest_generated
+{
+    vpackage(P1, /Verse.org/Test, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            @available{MinUploadedAtFNVersion:=1337}
+            Module<public> := module:
+                @doc("Enum type doc")
+                @available{MinUploadedAtFNVersion:=1338}
+                test_enum<public> := enum:
+                    @doc("Enum value doc")
+                    First
+
+            Module2<public> := module:
+                @doc("Enum type doc")
+                @available{MinUploadedAtFNVersion:=1338}
+                test_enum<public> := enum:
+                    @doc("Enum value doc")
+                    First
+
+    expected_digest(Package := P1, ?Variant := PublicOnly):
+        using {/Verse.org/Native}
+        @available {MinUploadedAtFNVersion := 1337}
+        # Module import path: /Verse.org/Test/Module
+        Module<public> := module:
+            using {/Verse.org/Native}
+            @available {MinUploadedAtFNVersion := 1338}
+            # Enum type doc
+            (/Verse.org/Test/Module:)test_enum<public> := enum:
+                # Enum value doc
+                First
+
+        # Module import path: /Verse.org/Test/Module2
+        Module2<public> := module:
+            using {/Verse.org/Native}
+            @available {MinUploadedAtFNVersion := 1338}
+            # Enum type doc
+            (/Verse.org/Test/Module2:)test_enum<public> := enum:
+                # Enum value doc
+                First
 }

@@ -1,0 +1,10 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_link_error():
+    vpackage(PackageA, /Verse.org/VerseTests/SharedModule, ?Scope:=InternalAPI, ?Dependencies:=(PackageB)):
+        snippet:
+            Func():void={}
+
+    vpackage(PackageB, /Verse.org/VerseTests/SharedModule, ?Scope:=InternalAPI, ?Dependencies:=(PackageA)):
+        snippet:
+            Func2():void={}

@@ -1,0 +1,32 @@
+F(G:type{_():r} where r:type):void=
+    if(false?):
+        G()
+    else:
+        false
+
+H():void = {}
+
+I():void =
+    G := H
+    F(G)
+
+# Ensure IR generation succeeds and code generation does not generate code that
+# attempts to write `any` to `true`.
+assert:
+    var X:true = void(false)
+    # Ensure `any` isn't written to `X`, overwriting a subsequent local.
+    Y:int = 0xDEADC0DECAFEBA
+    set X = I()
+    X = false
+    Y = 0xDEADC0DECAFEBA
+
+F1(X:void)<computes>:true = X
+F2(X:comparable)<computes><decides>:comparable = X = 1
+
+assert:
+    F3 := array{F1, F2}
+    # The new VM doesn't handle nested use of `void` correctly.
+    bp_vm_only{F3[0][1] = false}
+    bp_vm_only{F3[0][2] = false}
+    F3[1][1] = 1
+    not F3[1][2]

@@ -1,0 +1,440 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+# Classes for testing scalar type serialization
+
+scalar_char := class(serializable_class):
+    Value:char=0o41
+
+scalar_char32 := class(serializable_class):
+    Value:char32=0u4100
+
+scalar_string := class(serializable_class):
+    Value:string="test"
+
+scalar_int := class(serializable_class):
+    Value:int=12345
+
+scalar_float := class(serializable_class):
+    Value:float=3.14
+
+scalar_rational := class(serializable_class):
+    Value:rational=1/2 or DebugUnreachable()
+
+# ============================================================================
+# Versioned binary serialization roundtripping tests
+# ============================================================================
+
+# char
+assert{Instance := scalar_char{Value:=0o00}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:=0o01}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='a'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='z'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='A'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='Z'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='0'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='9'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:=0o7f}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:=0off}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='\t'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='\n'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='\r'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char); RoundtrippedInstance.Value = Instance.Value}
+
+# char32
+assert{Instance := scalar_char32{Value:=0u00000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u00001}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u0041}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u005A}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u007F}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u0080}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u00FF}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u0100}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+#assert{Instance := scalar_char32{Value:=0uFFFF}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u10000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u10FFFF}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:='你'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:='好'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:='😀'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:='🚀'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32); RoundtrippedInstance.Value = Instance.Value}
+
+# string
+assert{Instance := scalar_string{Value:=""}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="a"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="hello"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="hello world"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="Hello, World!"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="line1\nline2"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="tab\there"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="quote\"here"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="backslash\\here"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="你好"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="世界"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="😀🚀"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="mixed 你好 emoji 😀"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string); RoundtrippedInstance.Value = Instance.Value}
+
+# int
+assert{Instance := scalar_int{Value:=0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=42}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-42}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=100}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-100}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1000000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1000000000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1000000000000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=0x7fffffffffffffff}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-9223372036854775808}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=0xff}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=0xffff}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=0xffffffff}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = Instance.Value}
+
+# float
+assert{Instance := scalar_float{Value:=0.0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=1.0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=-1.0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=0.5}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=-0.5}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=3.14159265358979}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=2.718281828459045}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=1.0e10}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=1.0e-10}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=1.7976931348623157e+308}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=2.2250738585072014e-308}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=+Inf}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=-Inf}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=NaN}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float); RoundtrippedInstance.Value = Instance.Value}
+
+# rational
+assert{Instance := scalar_rational{Value:=0/1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=-1/1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/2}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=-1/2}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/3}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=2/3}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/4}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=3/4}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/10}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/100}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/1000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=22/7}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=355/113}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1000000/1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/1000000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Unversioned binary serialization roundtripping tests
+# ============================================================================
+
+# char
+assert{Instance := scalar_char{Value:=0o00}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='a'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:=0off}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# char32
+assert{Instance := scalar_char32{Value:=0u00000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u0041}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:='😀'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u10FFFF}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# string
+assert{Instance := scalar_string{Value:=""}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="hello"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="你好😀"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# int
+assert{Instance := scalar_int{Value:=0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=0x7fffffffffffffff}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-9223372036854775808}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# float
+assert{Instance := scalar_float{Value:=0.0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=3.14159265358979}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=+Inf}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=-Inf}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=NaN}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# rational
+assert{Instance := scalar_rational{Value:=0/1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/2}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=22/7}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Text serialization roundtripping tests
+# ============================================================================
+
+# char
+assert{Instance := scalar_char{Value:=0o00}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:='a'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char{Value:=0off}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# char32
+assert{Instance := scalar_char32{Value:=0u00000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u0041}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:='😀'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_char32{Value:=0u10FFFF}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# string
+assert{Instance := scalar_string{Value:=""}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="hello"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_string{Value:="你好😀"}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# int
+assert{Instance := scalar_int{Value:=0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=0x7fffffffffffffff}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_int{Value:=-9223372036854775808}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# float
+assert{Instance := scalar_float{Value:=0.0}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=3.14159265358979}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=+Inf}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=-Inf}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_float{Value:=NaN}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_float, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# rational
+assert{Instance := scalar_rational{Value:=0/1}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=1/2}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := scalar_rational{Value:=22/7}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_rational, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Tests of UE's ConvertFromType functionality to convert between compatible types on load.
+# ============================================================================
+
+bp_vm_only{
+# char --> int
+assert{Instance := scalar_char{Value:=0o00}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = 0}
+assert{Instance := scalar_char{Value:='a'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = 0x61}
+assert{Instance := scalar_char{Value:=0off}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = -1} # sign extension
+
+# char32 --> int
+assert{Instance := scalar_char32{Value:=0u00000}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = 0}
+assert{Instance := scalar_char32{Value:=0u0041}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = 0x41}
+assert{Instance := scalar_char32{Value:='😀'}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = 0x1F600}
+assert{Instance := scalar_char32{Value:=0u10FFFF}; RoundtrippedInstance := SerializeAndDeserialize(Instance, scalar_int); RoundtrippedInstance.Value = 0x10FFFF}
+} #bp_vm_only
+
+# ============================================================================
+# Tests of deserializing data serialized by old versions.
+# ============================================================================
+
+# Helper functions to generate test data
+DumpSerializedScalarChar(Value:char):void=
+    Instance := scalar_char{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarChar[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarChar[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingScalarChar[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedScalarChar32(Value:char32):void=
+    Instance := scalar_char32{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarChar32[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarChar32[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingScalarChar32[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedScalarString(Value:string):void=
+    Instance := scalar_string{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingScalarString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedScalarInt(Value:int):void=
+    Instance := scalar_int{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingScalarInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedScalarFloat(Value:float):void=
+    Instance := scalar_float{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarFloat[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarFloat[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingScalarFloat[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedScalarRational(Value:rational):void=
+    Instance := scalar_rational{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarRational[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingScalarRational[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingScalarRational[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+# Uncomment to generate test data:
+<#>assert:
+    DumpSerializedScalarChar(0o00)
+    DumpSerializedScalarChar('a')
+    DumpSerializedScalarChar(0off)
+
+<#>assert:
+    DumpSerializedScalarChar32(0u00000)
+    DumpSerializedScalarChar32(0u0041)
+    DumpSerializedScalarChar32('😀')
+    DumpSerializedScalarChar32(0u10FFFF)
+
+<#>assert:
+    DumpSerializedScalarString("")
+    DumpSerializedScalarString("hello")
+    DumpSerializedScalarString("你好")
+
+<#>assert:
+    DumpSerializedScalarInt(0)
+    DumpSerializedScalarInt(1)
+    DumpSerializedScalarInt(-1)
+    DumpSerializedScalarInt(0x7fffffffffffffff)
+
+<#>assert:
+    DumpSerializedScalarFloat(0.0)
+    DumpSerializedScalarFloat(3.14159265358979)
+    DumpSerializedScalarFloat(+Inf)
+    DumpSerializedScalarFloat(-Inf)
+
+<#>assert:
+    DumpSerializedScalarRational(0/1)
+    DumpSerializedScalarRational(1/2)
+    DumpSerializedScalarRational(22/7)
+
+# Test helpers for deserializing old scalar data
+TestDeserializingScalarChar(ExpectedValue:char, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, scalar_char)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected scalar_char\{Value:={DebugToString(ExpectedValue)}\}, but got scalar_char\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingScalarChar32(ExpectedValue:char32, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, scalar_char32)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected scalar_char32\{Value:={DebugToString(ExpectedValue)}\}, but got scalar_char32\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingScalarString(ExpectedValue:string, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, scalar_string)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected scalar_string\{Value:={DebugToString(ExpectedValue)}\}, but got scalar_string\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingScalarInt(ExpectedValue:int, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, scalar_int)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected scalar_int\{Value:={DebugToString(ExpectedValue)}\}, but got scalar_int\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingScalarFloat(ExpectedValue:float, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, scalar_float)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected scalar_float\{Value:={DebugToString(ExpectedValue)}\}, but got scalar_float\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingScalarRational(ExpectedValue:rational, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, scalar_rational)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected scalar_rational\{Value:={DebugToString(ExpectedValue)}\}, but got scalar_rational\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+bp_vm_only{
+assert{TestDeserializingScalarChar[0o00, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}\r{0o00}{0o00}{0o00}ByteProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar[0o00, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o80}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar[0o00, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ByteProperty\",\r\n\t\t\t\t\t\t\"__Value\": 0\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarChar['a', serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}\r{0o00}{0o00}{0o00}ByteProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}a{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar['a', serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}a{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar['a', serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ByteProperty\",\r\n\t\t\t\t\t\t\"__Value\": 97\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarChar[0off, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}\r{0o00}{0o00}{0o00}ByteProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar[0off, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0off}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar[0off, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"ByteProperty\",\r\n\t\t\t\t\t\t\"__Value\": 255\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingScalarChar32[0u0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}IntProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o80}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"IntProperty\",\r\n\t\t\t\t\t\t\"__Value\": 0\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarChar32[0u41, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}IntProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}A{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u41, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}A{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u41, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"IntProperty\",\r\n\t\t\t\t\t\t\"__Value\": 65\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarChar32[0u1f600, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}IntProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0of6}{0o01}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u1f600, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0of6}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u1f600, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"IntProperty\",\r\n\t\t\t\t\t\t\"__Value\": 128512\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarChar32[0u10ffff, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}IntProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0o10}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u10ffff, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0off}{0off}{0o10}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarChar32[0u10ffff, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"IntProperty\",\r\n\t\t\t\t\t\t\"__Value\": 1114111\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingScalarString["", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarString["", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarString["", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"VerseStringProperty\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"Data\": \"Base64:AAAAAA==\"\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarString["hello", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}\t{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}hello{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarString["hello", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o05}{0o00}{0o00}{0o00}hello{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarString["hello", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"VerseStringProperty\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"Data\": \"Base64:BQAAAGhlbGxv\"\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarString["{0u4f60}{0u597d}", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}\n{0o00}{0o00}{0o00}{0o00}{0o06}{0o00}{0o00}{0o00}{0u4f60}{0u597d}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarString["{0u4f60}{0u597d}", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o06}{0o00}{0o00}{0o00}{0u4f60}{0u597d}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarString["{0u4f60}{0u597d}", serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"VerseStringProperty\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"Data\": \"Base64:BgAAAOS9oOWlvQ==\"\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingScalarInt[0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o80}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\"__Value\": 0\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarInt[1, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[1, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[1, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\"__Value\": 1\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarInt[-1, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[-1, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[-1, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\"__Value\": -1\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarInt[9223372036854775807, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[9223372036854775807, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarInt[9223372036854775807, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\"__Value\": 9223372036854775807\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingScalarFloat[0.0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}DoubleProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[0.0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o80}{0o03}{0o01}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[0.0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"DoubleProperty\",\r\n\t\t\t\t\t\t\"__Value\": 0\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarFloat[3.14159265358979, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}DoubleProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o11}-DT{0ofb}!\t@{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[3.14159265358979, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o11}-DT{0ofb}!\t@{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[3.14159265358979, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"DoubleProperty\",\r\n\t\t\t\t\t\t\"__Value\": 3.14159265358979\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarFloat[Inf, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}DoubleProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0of0}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[Inf, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0of0}{0o7f}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[Inf, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"DoubleProperty\",\r\n\t\t\t\t\t\t\"__Value\": \"Number:+inf\"\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarFloat[-Inf, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}DoubleProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0of0}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[-Inf, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0of0}{0off}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarFloat[-Inf, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"DoubleProperty\",\r\n\t\t\t\t\t\t\"__Value\": \"Number:-inf\"\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingScalarRational[0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}StructProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}VerseRational{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}/Script/CoreUObject{0o00}{0o00}{0o00}{0o00}{0o00}m{0o00}{0o00}{0o00}{0o00}\n{0o00}{0o00}{0o00}Numerator{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}Denominator{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarRational[0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o80}{0o05}{0o01}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarRational[0, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"StructProperty(VerseRational(/Script/CoreUObject))\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"Numerator\": \{\r\n\t\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\t\"__Value\": 0\r\n\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\"Denominator\": \{\r\n\t\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\t\"__Value\": 1\r\n\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarRational[1/2, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}StructProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}VerseRational{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}/Script/CoreUObject{0o00}{0o00}{0o00}{0o00}{0o00}m{0o00}{0o00}{0o00}{0o00}\n{0o00}{0o00}{0o00}Numerator{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}Denominator{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarRational[1/2, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o05}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarRational[1/2, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"StructProperty(VerseRational(/Script/CoreUObject))\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"Numerator\": \{\r\n\t\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\t\"__Value\": 1\r\n\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\"Denominator\": \{\r\n\t\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\t\"__Value\": 2\r\n\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingScalarRational[22/7, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}StructProperty{0o00}{0o01}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}VerseRational{0o00}{0o01}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}/Script/CoreUObject{0o00}{0o00}{0o00}{0o00}{0o00}m{0o00}{0o00}{0o00}{0o00}\n{0o00}{0o00}{0o00}Numerator{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o16}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0c}{0o00}{0o00}{0o00}Denominator{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o07}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarRational[22/7, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o05}{0o16}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o07}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingScalarRational[22/7, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"StructProperty(VerseRational(/Script/CoreUObject))\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"Numerator\": \{\r\n\t\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\t\"__Value\": 22\r\n\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\"Denominator\": \{\r\n\t\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\t\"__Value\": 7\r\n\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+}

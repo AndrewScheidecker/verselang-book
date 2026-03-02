@@ -975,11 +975,11 @@ assert:
     SyncGetResultFromTask[Task]=100
 
 # Test that spawn without a subexpression produces an error.
-assert_semantic_error(3508){F():void=spawn{}}
+assert_semantic_error(3539){F():void=spawn{}}
 
 # Test that spawn with an erronous subexpression doesn't crash.
-assert_semantic_error(3506){F():void=spawn{Error}}
-assert_semantic_error(3538){F():void=spawn{0}}
+assert_semantic_error(bp_vm_only{3506, 3502}; verse_vm_only{3506}){F():void=spawn{Error}}
+assert_semantic_error(bp_vm_only{3538, 3502}; verse_vm_only{3538}){F():void=spawn{0}}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1044,3 +1044,20 @@ assert:
 # Test that spawning a parametric function works correctly.
 ParametricAsyncFunction(X:t where t:type)<suspends>:t=X
 assert. spawn. ParametricAsyncFunction(0)
+
+verse_vm_only {
+assert:
+    var Z:int = 0
+    var X:int = 0
+    Event := event(){}
+    loop:
+        Y := X
+        if (Y >= 3):
+            break
+        spawn:
+            Event.Await()
+            set Z += Y
+        set X += 1
+    Event.Signal()
+    Z = 0 + 1 + 2
+}

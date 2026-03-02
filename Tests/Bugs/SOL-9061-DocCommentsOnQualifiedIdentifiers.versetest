@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test that `@doc` comments are roundtripped as expected.
+assert_digest_generated
+{
+    vpackage(P0, /Verse.org/Test, ?Scope := InternalUser):
+        snippet:
+            using { /Verse.org/Native }
+            FooEnum<public> := enum<open>:
+                @doc("Lorem ipsum sit dolor amet")
+                Shadow
+
+            Bar<public> := module:
+                Shadow<public>:int = 42
+
+    expected_digest(Package := P0, ?Variant := PublicOnly):
+        FooEnum<public> := enum<open>:
+            # Lorem ipsum sit dolor amet
+            (/Verse.org/Test/FooEnum:)Shadow
+
+        # Module import path: /Verse.org/Test/Bar
+        Bar<public> := module:
+            Shadow<public>:int = external{}
+}

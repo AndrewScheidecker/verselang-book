@@ -1,5 +1,7 @@
 # Copyright Epic Games, Inc. All Rights Reserved.
 
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
 assert_semantic_error(3661):
     F():int =
         G<public>():int = 1
@@ -210,7 +212,7 @@ SelfAccess := module:
         Data<public>:int = 0
         F<public>(X:int):int =
             G():int =
-                X + Self.H()
+                X + Self.H() + H() + Data
             G()
         H():int =
             Data
@@ -218,7 +220,7 @@ SelfAccess := module:
 assert:
     X := SelfAccess.class1:
         Data := 1
-    X.F(2) = 3
+    X.F(2) = 5
 
 # Only possible to use (super:) on the same function as being defined.
 assert_semantic_error(3612):
@@ -265,4 +267,16 @@ EmptyCaptures := module:
 
 assert:
     EmptyCaptures.F(2) = 3
+
+TypeVariableCapture := module:
+    my_class<public> := class<concrete>:
+
+    CaptureType<public>(Item:concrete_subtype(my_class)):void =
+        spawn{UseType(Item)}
+
+    UseType<public>(Item:concrete_subtype(my_class))<suspends>:void =
+        TestUtils.AreClassesEqual[Item, my_class] or Err()
+
+assert:
+    TypeVariableCapture.CaptureType(TypeVariableCapture.my_class)
 }

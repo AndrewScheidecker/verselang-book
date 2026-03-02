@@ -185,6 +185,19 @@ assert { CheckArgs[SgnF, (-10.0, 0.0, 10.0), (-1.0, 0.0, 1.0)] }
 assert { Ceil[-1.5]=-1 }
 assert { Floor[-1.5]=-2 }
 
+assert { Clamp(1, -2, 2)=1 }
+assert { Clamp(1, 2, -2)=1 }
+assert { Clamp(5, -2, 2)=2 }
+assert { Clamp(5, 2, -2)=2 }
+assert { Clamp(-5, -2, 2)=-2 }
+assert { Clamp(-5, 2, -2)=-2 }
+assert { Clamp(1.0, -2.0, 2.0)=1.0 }
+assert { Clamp(1.0, 2.0, -2.0)=1.0 }
+assert { Clamp(5.0, -2.0, 2.0)=2.0 }
+assert { Clamp(5.0, 2.0, -2.0)=2.0 }
+assert { Clamp(-5.0, -2.0, 2.0)=-2.0 }
+assert { Clamp(-5.0, 2.0, -2.0)=-2.0 }
+
 # Round() should round ties to nearest even number per IEEE-754 default implementation
 assert { Round[-1.5]=-2 }
 assert { Round[-0.5]=0 }

@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd/InterfaceWithNamedParams }
+
+test_values := class(test_interface):
+	ExpectedA:int
+	ExpectedB:int
+	ExpectedC:int
+	ExpectedD:int
+	
+	TestFunction<override>(A:int, B:int, ?C:int = 3, ?D:int = 4, ?E:int = 10)<decides>:void =
+		A = ExpectedA
+		B = ExpectedB
+		C = ExpectedC
+		D = ExpectedD
+		E = 10
+
+assert:
+	test := test_values{ExpectedA := 0, ExpectedB := 1, ExpectedC := 2, ExpectedD := 3}
+	CallWithABC[test, 0, 1, ?C := 2, ?D := 3]
+
+assert:
+	test := test_values{ExpectedA := 1, ExpectedB := 2, ExpectedC := 3, ExpectedD := 4}
+	CallWithABC[test, 1, 2]

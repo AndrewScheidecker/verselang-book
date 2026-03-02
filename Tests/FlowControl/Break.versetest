@@ -131,19 +131,30 @@ assert_semantic_error(3581):
 
 ############################################
 # Ensure break enclosed in loop (which is the only currently supported flow control block)
-assert_semantic_error(3581):
-    
+assert_semantic_error(3581, 3581):
     _waitNext()<suspends>:void={}
-
-    
-    _coroFlow()<suspends>:void=
+    Wrong1()<suspends>:void=
         sync:
             _waitNext()
             block:
                 _waitNext()
-                # Would early exit sync but not yet supported
                 break
 
+    Wrong2()<suspends>:void =
+        loop:
+            sync:
+                _waitNext()
+                block:
+                    _waitNext()
+                    break
+
+    Ok()<suspends>:void =
+        sync:
+            loop:
+                _waitNext()
+                break
+            block:
+                _waitNext()
 
 ############################################
 # Ensure loop has matching break and don't confuse with non-matching nested break

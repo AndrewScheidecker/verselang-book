@@ -1,0 +1,274 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_only {
+IntString(X:int)<closed><computes>:string = "{X}"
+
+assert:
+    X:IntString = 1
+    X = "1"
+
+assert_semantic_error(3547):
+    F(X:int)<computes>:int = X
+    Y:F = 1
+
+assert_semantic_error(3512):
+    F(X:int)<closed><computes>:int = X
+    Y:F = 1
+
+assert_semantic_error(3552, 3512):
+    F(X:int)<closed><computes><reads>:int = X
+    Y:F = 1
+
+assert_semantic_error(3509):
+    F(X:int)<closed><computes>:float = 1.0
+    Main():void =
+        X:F = 1
+        Y:int = X
+
+assert_semantic_error(3509):
+    F(X:int)<closed><computes>:float = 1.0
+    Main():void =
+        var X:F = 1
+        Y:int = X
+
+assert:
+    var X:IntString = 1
+    Y:string = X
+    X = "1"
+    Y = "1"
+
+assert_semantic_error(3509):
+    F(X:int)<closed><computes>:float = 1.0
+    Main():void =
+        Y:float = 1.0
+        var X:F = Y
+
+assert_semantic_error(3509):
+    F(X:int)<closed><computes>:float = 1.0
+    Main():void =
+        Y:float = 2.0
+        var X:F = 1
+        set X = Y
+
+assert_semantic_error(3552, 3512):
+    F(X:int)<closed><reads>:int = X
+    class1 := class:
+        X:F = 1
+
+assert_semantic_error(3512):
+    F(X:int)<closed><reads>:int = X
+    class1 := class:
+        var X:F = 1
+
+class1 := class:
+    X:IntString
+
+assert:
+    X := class1:
+        X := 2
+    X.X = "2"
+
+assert:
+    var X:IntString = 1
+    X = "1"
+    set X = 2
+    X = "2"
+
+class2 := class:
+    var X:IntString
+
+assert:
+    X := class2:
+        X := 2
+    X.X = "2"
+    set X.X = 3
+    X.X = "3"
+
+assert:
+    var X:int = 1
+    G(Y:int)<closed><reads>:int = X + Y
+    var live Z:G = 2
+    Z = 3
+    set X = 2
+    Z = 4
+
+assert:
+    var X:int = 1
+    G(Y:int)<closed><reads>:int = X + Y
+    var Z:G = 2
+    Z = 3
+    var A:int = 3
+    set live Z = A
+    Z = 4
+    set X = 4
+    Z = 7
+    set A = 5
+    Z = 9
+
+assert:
+    var X:int = 1
+    G(Y:int)<closed><reads>:int = X + Y
+    var A:int = 3
+    live Z:G = A
+    Z = 4
+    set X = 4
+    Z = 7
+    set A = 5
+    Z = 9
+
+assert:
+    var X:int = 1
+    G(Y:int)<closed><reads>:int = X + Y
+    var Z:G = 2
+    Z = 3
+    var A:int = 3
+    set Z = A
+    Z = 4
+    set X = 4
+    Z = 7
+    set A = 5
+    Z = 7
+
+assert_semantic_error(3552):
+    Main()<decides>:void =
+        var X:int = 1
+        G(Y:int)<closed><reads>:int = X + Y
+        Z:G = 2
+        Z = 3
+        set X = 3
+        Z = 5
+
+assert_semantic_error(3502):
+    class3 := class:
+        var X:int = 1
+        G(Y:int)<closed><reads>:int = X + Y
+        var Z:G
+
+assert_semantic_error(3502):
+    F(X:int)<closed><computes>:int = X + 1
+    class1 := class:
+        X:int
+    class2 := class(class1):
+        X<override>:F
+
+assert_semantic_error(3502):
+    F(X:int)<closed><computes>:int = X + 1
+    class1 := class:
+        X:F
+    class2 := class(class1):
+        X<override>:int
+    
+assert_semantic_error(3502):
+    F(X:int)<closed><computes>:int = X + 1
+    class1 := class:
+        X:F
+    class2 := class(class1):
+        X<override>:F
+
+# `type` is not considered to be a subtype of function type yet.  An arbitrary
+# `type` requires `decides`, and `decides` functions are not yet supported in
+# type position yet, so nothing with respect to functions-as-types is lost.
+assert_semantic_error(3547, 3547):
+    Main()<decides>:void =
+        G(X:int)<closed><computes>:int = X + 1
+        t := if (false?) then G else int
+        Y:t = 1
+        Y = 1
+        u := if (true?) then G else int
+        Z:u = 1
+        Z = 2
+
+assert:
+    X := test_function_as_type:
+        X := 1
+    X.X = "1"
+
+assert_semantic_error(3593):
+    F(X:int)<closed><computes>:int = X
+    class1<public> := class:
+        X<public>:F
+
+assert_semantic_error(3502):
+    F(X:int)<closed><computes><reads>:int = X + 1
+    class1<native> := class:
+        var X<native>:F
+
+assert:
+    X := test_native_function_as_type:
+        X := 1
+    X.X = "1"
+
+assert:
+    G(X:int)<closed><computes>:int = X + 1
+    H(X:int)<closed><computes>:int = X - 1
+    I := if (false?) then G else H
+    Y:I = 1
+    Y = 0
+
+assert:
+    G(X:int)<closed><computes>:int = X + 1
+    H(X:int)<closed><computes>:int = X - 1
+    Y:(if (false?) then G else H) = 1
+    Y = 0
+
+assert_semantic_error(3502):
+    G(X:int)<closed><computes>:int = X + 1
+    H(X:int)<closed><computes>:int = X - 1
+    Y:(if (false?) then G else H) = 1
+
+interface1 := interface:
+    var X:IntString
+
+class4 := class(interface1) {}
+
+assert:
+    X := class4:
+        X := 1
+    X.X = "1"
+    set X.X = 2
+    X.X = "2"
+
+class5 := class(test_function_as_type_iface) {}
+
+assert:
+    X := class5:
+        X := 1
+    X.X = "1"
+
+# Ensure invoking a parametric type at module-scope is supported.
+Event:?event() = false
+
+assert:
+    F(X:int)<computes><closed>:int = X + 1
+    var Y:F = 1
+    Y = 2
+    set Y += 3
+    Y = 6
+    set Y -= 4
+    Y = 3
+    set Y *= 5
+    Y = 16
+
+
+assert:
+    F(X:float)<computes><closed>:float = X + 1.0
+    var Y:F = 1.0
+    Y = 2.0
+    set Y += 3.0
+    Y = 6.0
+    set Y -= 4.0
+    Y = 3.0
+    set Y *= 5.0
+    Y = 16.0
+    set Y /= 8.0
+    Y = 3.0
+
+assert:
+    F(X:[]int)<computes><closed>:[]int = X + X
+    var Y:F = (1, 2)
+    Y = (1, 2, 1, 2)
+    set Y += (3, 4, 5)
+    Y = (1, 2, 1, 2, 3, 4, 5, 1, 2, 1, 2, 3, 4, 5)
+}

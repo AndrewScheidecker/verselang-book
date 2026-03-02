@@ -57,12 +57,12 @@ c4 := class(c3):
     block:
         CoroUtils.LogEvent("c")
 
-# VerseVM runs fields and blocks in class body order, subclass before superclass.
+# VerseVM with verse.UObjectLeniency runs fields and blocks from subclass to superclass.
 assert:
     CoroUtils.LogEvent("a")
     c4{}
-    bp_vm_only. CoroUtils.GetEventLogString() = "abc"
-    verse_vm_only. CoroUtils.GetEventLogString() = "acb"
+    strict_only{ CoroUtils.GetEventLogString() = "abc" }
+    lenient_only{ CoroUtils.GetEventLogString() = "acb" }
     CoroUtils.Reset()
 
 # Test calling functions from a block clause.

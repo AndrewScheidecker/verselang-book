@@ -120,10 +120,7 @@ assert_valid:
         Coro1()
 
 # Can't break or return from a branch.
-# TODO: currently this throws 3552 (unsupported) but once
-# we do support branch in a loop then it should throw 3556
-#assert_semantic_error(3556):
-assert_semantic_error(3552):
+assert_semantic_error(bp_vm_only{3552}; verse_vm_only{3556}):
     Coro1(X:void)<suspends>:void={}
 
     Coro2()<suspends>:void=
@@ -131,6 +128,7 @@ assert_semantic_error(3552):
             branch:
                 Coro1(@ignore_unreachable break)
             break
+
 assert_semantic_error(3556):
 
     Coro1(X:void)<suspends>:void={}
@@ -177,3 +175,26 @@ assert:
     numTasksAfterSpawn > 0
     numTasksInTheEnd = 0
     GetLogStr() = "ABE,c,D,,F"
+
+verse_vm_only {
+int_ref := class:
+    var Contents:int = 0
+
+F(Result:int_ref)<suspends>:void =
+    Event := event(){}
+    var X:int = 0
+    loop:
+        Y := X
+        if (Y >= 3):
+            break
+        branch:
+            Event.Await()
+            set Result.Contents += Y
+        set X += 1
+    Event.Signal()
+
+assert:
+    X := int_ref{}
+    spawn. F(X)
+    X.Contents = 0 + 1 + 2
+}

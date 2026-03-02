@@ -1,0 +1,645 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+# Workaround for delta serialization bug: compares maps by key-value associations
+# without regard for iteration order. Remove this when the bug is fixed.
+# Fails if the maps are already equal (to avoid over-using this workaround).
+MapsEqualUnordered(A:[comparable]comparable, B:[comparable]comparable)<reads><decides>:void=
+    # We don't need the workaround on the new VM, only the old VM.
+    bp_vm_only{NeedsWorkaround := true}
+    verse_vm_only{NeedsWorkaround := false}
+    if(not NeedsWorkaround?):
+        if (A <> B):
+            DebugPrint("MapsEqualUnordered: mismatch\n  A={DebugToString(A)}\n  B={DebugToString(B)}")
+            false?
+    else:
+        # Fail if maps are already equal - don't need this workaround
+        if (A = B):
+            Err("MapsEqualUnordered: maps are already equal, use direct comparison instead")
+        # Check same length and all keys in A exist in B with same value.
+        # If lengths match and all A keys are in B, B can't have extra keys.
+        if (A.Length <> B.Length):
+            DebugPrint("MapsEqualUnordered: length mismatch\n  A={DebugToString(A)}\n  B={DebugToString(B)}")
+            false?
+        for (Key -> Value : A):
+            if (BValue := B[Key]):
+                if (Value <> BValue):
+                    DebugPrint("MapsEqualUnordered: value mismatch for key {DebugToString(Key)}\n  A={DebugToString(A)}\n  B={DebugToString(B)}")
+                    false?
+            else:
+                DebugPrint("MapsEqualUnordered: key {DebugToString(Key)} not found in B\n  A={DebugToString(A)}\n  B={DebugToString(B)}")
+                false?
+
+# Struct definitions for testing
+test_struct := struct:
+    A:int=1
+    B:int=2
+
+# ============================================================================
+# Map classes with various key/value type combinations
+# ============================================================================
+
+# int keys
+map_int_to_int := class(serializable_class):
+    Value:[int]int=map{42=>100}
+
+map_int_to_float := class(serializable_class):
+    Value:[int]float=map{1=>3.14}
+
+map_int_to_string := class(serializable_class):
+    Value:[int]string=map{1=>"hello"}
+
+map_int_to_logic := class(serializable_class):
+    Value:[int]logic=map{1=>true}
+
+# string keys
+map_string_to_int := class(serializable_class):
+    Value:[string]int=map{"key"=>42}
+
+map_string_to_float := class(serializable_class):
+    Value:[string]float=map{"pi"=>3.14159}
+
+map_string_to_string := class(serializable_class):
+    Value:[string]string=map{"hello"=>"world"}
+
+map_string_to_logic := class(serializable_class):
+    Value:[string]logic=map{"flag"=>true}
+
+# char keys
+map_char_to_int := class(serializable_class):
+    Value:[char]int=map{'a'=>1}
+
+map_char_to_string := class(serializable_class):
+    Value:[char]string=map{'x'=>"x-ray"}
+
+# logic keys
+map_logic_to_int := class(serializable_class):
+    Value:[logic]int=map{true=>1, false=>0}
+
+map_logic_to_string := class(serializable_class):
+    Value:[logic]string=map{true=>"yes", false=>"no"}
+
+# Maps to arrays
+map_int_to_array_of_int := class(serializable_class):
+    Value:[int][]int=map{1=>array{10, 20, 30}}
+
+map_string_to_array_of_string := class(serializable_class):
+    Value:[string][]string=map{"greetings"=>array{"hello", "hi", "hey"}}
+
+# Maps to structs
+map_int_to_struct := class(serializable_class):
+    Value:[int]test_struct=map{1=>test_struct{A:=10, B:=20}}
+
+map_string_to_struct := class(serializable_class):
+    Value:[string]test_struct=map{"point"=>test_struct{A:=5, B:=10}}
+
+# Nested maps
+map_int_to_map_int_to_int := class(serializable_class):
+    Value:[int][int]int=map{1=>map{10=>100}}
+
+map_string_to_map_string_to_int := class(serializable_class):
+    Value:[string][string]int=map{"outer"=>map{"inner"=>42}}
+
+# ============================================================================
+# Delta serialization tests - interactions with class default values
+# ============================================================================
+
+# map_int_to_logic default is map{1=>true}
+assert{Instance := map_int_to_logic{Value:=map{1=>true               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}  # exact default
+assert{Instance := map_int_to_logic{Value:=map{1=>false              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}  # same key, different value
+assert{Instance := map_int_to_logic{Value:=map{0=>false              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}  # different key
+assert{Instance := map_int_to_logic{Value:=map{0=>false, 1=>true     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_logic{Value:=map{1=>true, 2=>false     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}  # add key after default
+assert{Instance := map_int_to_logic{Value:=map{0=>true, 1=>true, 2=>false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # keys around default
+
+# map_int_to_int default is map{42=>100}
+assert{Instance := map_int_to_int{Value:=map{42=>100                 }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}  # exact default
+assert{Instance := map_int_to_int{Value:=map{42=>999                 }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}  # same key, different value
+assert{Instance := map_int_to_int{Value:=map{1=>1, 42=>100           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_int{Value:=map{42=>100, 99=>99         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}  # add key after default
+assert{Instance := map_int_to_int{Value:=map{1=>1, 42=>100, 99=>99   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # keys around default
+
+# map_int_to_string default is map{1=>"hello"}
+assert{Instance := map_int_to_string{Value:=map{1=>"hello"           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}  # exact default
+assert{Instance := map_int_to_string{Value:=map{1=>"world"           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}  # same key, different value
+assert{Instance := map_int_to_string{Value:=map{0=>"zero", 1=>"hello"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_string{Value:=map{1=>"hello", 2=>"two" }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}  # add key after default
+
+# map_int_to_float default is map{1=>3.14}
+assert{Instance := map_int_to_float{Value:=map{1=>3.14               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}  # exact default
+assert{Instance := map_int_to_float{Value:=map{1=>2.71               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}  # same key, different value
+assert{Instance := map_int_to_float{Value:=map{0=>0.0, 1=>3.14       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_float{Value:=map{1=>3.14, 2=>2.0       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}  # add key after default
+
+# map_logic_to_int default is map{true=>1, false=>0} - already has 2 entries
+assert{Instance := map_logic_to_int{Value:=map{true=>1, false=>0     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}  # exact default
+assert{Instance := map_logic_to_int{Value:=map{false=>0, true=>1     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # same content, different order
+assert{Instance := map_logic_to_int{Value:=map{true=>99, false=>0    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}  # modify first key's value
+assert{Instance := map_logic_to_int{Value:=map{true=>1, false=>99    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}  # modify second key's value
+assert{Instance := map_logic_to_int{Value:=map{true=>99, false=>88   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}  # modify both values
+
+# map_string_to_int default is map{"key"=>42}
+assert{Instance := map_string_to_int{Value:=map{"key"=>42            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}  # exact default
+assert{Instance := map_string_to_int{Value:=map{"key"=>99            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}  # same key, different value
+assert{Instance := map_string_to_int{Value:=map{"a"=>1, "key"=>42    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_string_to_int{Value:=map{"key"=>42, "z"=>99   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}  # add key after default
+
+# ============================================================================
+# Versioned binary serialization roundtripping tests
+# ============================================================================
+
+# int => int maps
+assert{Instance := map_int_to_int{Value:=map{                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{0=>0                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>100                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{-1=>-100                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>10, 2=>20, 3=>30     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{0x7fffffffffffffff=>-1  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# int => float maps
+assert{Instance := map_int_to_float{Value:=map{                      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_float{Value:=map{1=>3.14159            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_float{Value:=map{1=>+Inf, 2=>-Inf      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_float{Value:=map{0=>NaN                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); RoundtrippedInstance.Value = Instance.Value}
+
+# int => string maps
+assert{Instance := map_int_to_string{Value:=map{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{1=>"one"             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{1=>"one", 2=>"two"   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{0=>""                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{1=>"你好"            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{1=>"😀🚀"            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = Instance.Value}
+
+# int => logic maps
+assert{Instance := map_int_to_logic{Value:=map{                      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_logic{Value:=map{0=>false              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_logic{Value:=map{1=>true               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_logic{Value:=map{0=>false, 1=>true     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# string => int maps
+assert{Instance := map_string_to_int{Value:=map{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"key"=>42            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"a"=>1, "b"=>2       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{""=>0                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"你好"=>42           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# string => float maps
+assert{Instance := map_string_to_float{Value:=map{                   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_float{Value:=map{"pi"=>3.14159      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_float); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_float{Value:=map{"e"=>2.71828       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_float); RoundtrippedInstance.Value = Instance.Value}
+
+# string => string maps
+assert{Instance := map_string_to_string{Value:=map{                         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{"hello"=>"world"         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{"a"=>"A", "b"=>"B"       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{""=>""                   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{"你好"=>"世界"           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+
+# string => logic maps
+assert{Instance := map_string_to_logic{Value:=map{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_logic{Value:=map{"flag"=>true              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_logic{Value:=map{"yes"=>true, "no"=>false  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_logic); RoundtrippedInstance.Value = Instance.Value}
+
+# char => int maps
+assert{Instance := map_char_to_int{Value:=map{                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_int{Value:=map{'a'=>1                 }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_int{Value:=map{'a'=>1, 'b'=>2, 'c'=>3 }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_int{Value:=map{0o00=>0                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_int{Value:=map{0off=>255              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# char => string maps
+assert{Instance := map_char_to_string{Value:=map{                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_string{Value:=map{'x'=>"x-ray"        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_string{Value:=map{'a'=>"alpha", 'b'=>"beta"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_string); RoundtrippedInstance.Value = Instance.Value}
+
+# logic => int maps
+assert{Instance := map_logic_to_int{Value:=map{                      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_int{Value:=map{true=>1               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_int{Value:=map{false=>0              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_int{Value:=map{true=>1, false=>0     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# logic => string maps
+assert{Instance := map_logic_to_string{Value:=map{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_string{Value:=map{true=>"yes"               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_string{Value:=map{true=>"yes", false=>"no"  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_string); RoundtrippedInstance.Value = Instance.Value}
+
+# int => array of int maps
+assert{Instance := map_int_to_array_of_int{Value:=map{                            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_array_of_int{Value:=map{1=>array{}                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_array_of_int{Value:=map{1=>array{10, 20, 30}        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_array_of_int{Value:=map{1=>array{1}, 2=>array{2, 3} }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+
+# string => array of string maps
+assert{Instance := map_string_to_array_of_string{Value:=map{                                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_array_of_string{Value:=map{"words"=>array{"hello", "world"}     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_array_of_string{Value:=map{"empty"=>array{}                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+
+# int => struct maps
+assert{Instance := map_int_to_struct{Value:=map{                                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_struct{Value:=map{1=>test_struct{}                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_struct{Value:=map{1=>test_struct{A:=10, B:=20}      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_struct{Value:=map{1=>test_struct{A:=1}, 2=>test_struct{A:=2}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct); RoundtrippedInstance.Value = Instance.Value}
+
+# string => struct maps
+assert{Instance := map_string_to_struct{Value:=map{                                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_struct); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_struct{Value:=map{"point"=>test_struct{A:=5, B:=10}   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_struct); RoundtrippedInstance.Value = Instance.Value}
+
+# nested maps
+assert{Instance := map_int_to_map_int_to_int{Value:=map{                          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_map_int_to_int{Value:=map{1=>map{}                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_map_int_to_int{Value:=map{1=>map{10=>100}           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_map_int_to_int{Value:=map{1=>map{10=>100}, 2=>map{20=>200}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := map_string_to_map_string_to_int{Value:=map{                              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_map_string_to_int{Value:=map{"outer"=>map{"inner"=>42}     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Multi-entry map order preservation tests (VersionedBinary)
+# Serialization should preserve key-value associations correctly.
+# ============================================================================
+
+# int keys - multiple entries, various orderings
+assert{Instance := map_int_to_int{Value:=map{3=>30, 1=>10, 2=>20           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{5=>5, 4=>4, 3=>3, 2=>2, 1=>1  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{-2=>2, -1=>1, 0=>0, 1=>-1, 2=>-2}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{100=>1, 10=>2, 1=>3, 1000=>4  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# More int => int ordering tests - try to expose ordering bugs
+assert{Instance := map_int_to_int{Value:=map{1=>2, 2=>1                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{2=>1, 1=>2                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{0=>1, 1=>0                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>0, 0=>1                    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>1, 2=>2, 3=>3              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{3=>3, 2=>2, 1=>1              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{2=>2, 3=>3, 1=>1              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>3, 2=>2, 3=>1              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{3=>1, 2=>2, 1=>3              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>100, 2=>200                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{2=>200, 1=>100                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{-1=>1, 1=>-1                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>-1, -1=>1                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# int keys with float values - multiple entries
+assert{Instance := map_int_to_float{Value:=map{3=>3.0, 1=>1.0, 2=>2.0      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_int_to_float{Value:=map{0=>0.0, -1=>-1.0, 1=>1.0    }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# int keys with string values - multiple entries
+assert{Instance := map_int_to_string{Value:=map{3=>"c", 1=>"a", 2=>"b"     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_int_to_string{Value:=map{5=>"e", 4=>"d", 3=>"c", 2=>"b", 1=>"a"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# int keys with logic values - multiple entries
+assert{Instance := map_int_to_logic{Value:=map{2=>true, 1=>false, 0=>true  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_int_to_logic{Value:=map{3=>false, 2=>true, 1=>false, 0=>true}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# string keys - multiple entries, various orderings (order preserved, no workaround needed)
+assert{Instance := map_string_to_int{Value:=map{"c"=>3, "a"=>1, "b"=>2     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"dog"=>1, "cat"=>2, "bird"=>3, "ant"=>4}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"z"=>26, "m"=>13, "a"=>1   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# string keys with string values - multiple entries (order preserved, no workaround needed)
+assert{Instance := map_string_to_string{Value:=map{"c"=>"C", "a"=>"A", "b"=>"B"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{"one"=>"1", "two"=>"2", "three"=>"3", "four"=>"4"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string); RoundtrippedInstance.Value = Instance.Value}
+
+# string keys with logic values - multiple entries (order preserved, no workaround needed)
+assert{Instance := map_string_to_logic{Value:=map{"c"=>true, "a"=>false, "b"=>true}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_logic{Value:=map{"w"=>true, "x"=>false, "y"=>true, "z"=>false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_logic); RoundtrippedInstance.Value = Instance.Value}
+
+# char keys - multiple entries
+assert{Instance := map_char_to_int{Value:=map{'z'=>26, 'm'=>13, 'a'=>1     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_char_to_int{Value:=map{'e'=>5, 'd'=>4, 'c'=>3, 'b'=>2, 'a'=>1}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# char keys with string values - multiple entries
+assert{Instance := map_char_to_string{Value:=map{'c'=>"charlie", 'a'=>"alpha", 'b'=>"bravo"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_string); RoundtrippedInstance.Value = Instance.Value}
+
+# Nested maps with multiple entries at each level
+assert{Instance := map_int_to_map_int_to_int{Value:=map{2=>map{20=>200, 21=>210}, 1=>map{10=>100, 11=>110}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_string_to_map_string_to_int{Value:=map{"b"=>map{"y"=>2, "x"=>1}, "a"=>map{"w"=>4, "z"=>3}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_map_string_to_int); RoundtrippedInstance.Value = Instance.Value}
+
+# Maps to arrays with multiple entries
+assert{Instance := map_int_to_array_of_int{Value:=map{3=>array{30}, 1=>array{10}, 2=>array{20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_string_to_array_of_string{Value:=map{"c"=>array{"c1", "c2"}, "a"=>array{"a1"}, "b"=>array{"b1", "b2", "b3"}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_array_of_string); RoundtrippedInstance.Value = Instance.Value}
+
+# Maps to structs with multiple entries
+assert{Instance := map_int_to_struct{Value:=map{3=>test_struct{A:=30}, 1=>test_struct{A:=10}, 2=>test_struct{A:=20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_string_to_struct{Value:=map{"c"=>test_struct{A:=3}, "a"=>test_struct{A:=1}, "b"=>test_struct{A:=2}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_struct); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Unversioned binary serialization roundtripping tests
+# ============================================================================
+
+# int => int maps
+assert{Instance := map_int_to_int{Value:=map{                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>100                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>10, 2=>20, 3=>30     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# int => string maps
+assert{Instance := map_int_to_string{Value:=map{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{1=>"one", 2=>"two"   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# string => int maps
+assert{Instance := map_string_to_int{Value:=map{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"key"=>42            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# string => string maps
+assert{Instance := map_string_to_string{Value:=map{                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{"hello"=>"world"  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# char => int maps
+assert{Instance := map_char_to_int{Value:=map{                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_int{Value:=map{'a'=>1, 'b'=>2         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# logic => int maps
+assert{Instance := map_logic_to_int{Value:=map{                      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_int{Value:=map{true=>1, false=>0     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# maps to arrays
+assert{Instance := map_int_to_array_of_int{Value:=map{1=>array{10, 20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# maps to structs
+assert{Instance := map_int_to_struct{Value:=map{1=>test_struct{A:=10, B:=20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# nested maps
+assert{Instance := map_int_to_map_int_to_int{Value:=map{1=>map{10=>100}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Text serialization roundtripping tests
+# ============================================================================
+
+# int => int maps
+assert{Instance := map_int_to_int{Value:=map{                        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>100                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_int{Value:=map{1=>10, 2=>20, 3=>30     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# int => string maps
+assert{Instance := map_int_to_string{Value:=map{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_string{Value:=map{1=>"one", 2=>"two"   }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# string => int maps
+assert{Instance := map_string_to_int{Value:=map{                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_int{Value:=map{"key"=>42            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# string => string maps
+assert{Instance := map_string_to_string{Value:=map{                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_string_to_string{Value:=map{"hello"=>"world"  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# char => int maps
+assert{Instance := map_char_to_int{Value:=map{                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_char_to_int{Value:=map{'a'=>1, 'b'=>2         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# logic => int maps
+assert{Instance := map_logic_to_int{Value:=map{                      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_logic_to_int{Value:=map{true=>1, false=>0     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# maps to arrays
+assert{Instance := map_int_to_array_of_int{Value:=map{1=>array{10, 20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# maps to structs
+assert{Instance := map_int_to_struct{Value:=map{1=>test_struct{A:=10, B:=20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# nested maps
+assert{Instance := map_int_to_map_int_to_int{Value:=map{1=>map{10=>100}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+# ============================================================================
+# Delta serialization order change tests (UnversionedBinary)
+# These tests verify that delta serialization correctly preserves key-value
+# associations even when the serialization order may differ from the source.
+# ============================================================================
+
+# map_int_to_logic default is map{1=>true}
+assert{Instance := map_int_to_logic{Value:=map{0=>false, 1=>true               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_logic{Value:=map{0=>true, 1=>true, 2=>false      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # keys around default
+
+# map_int_to_int default is map{42=>100}
+assert{Instance := map_int_to_int{Value:=map{1=>1, 42=>100                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_int{Value:=map{1=>1, 42=>100, 99=>99             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # keys around default
+
+# map_int_to_string default is map{1=>"hello"}
+assert{Instance := map_int_to_string{Value:=map{0=>"zero", 1=>"hello"          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+
+# map_int_to_float default is map{1=>3.14}
+assert{Instance := map_int_to_float{Value:=map{0=>0.0, 1=>3.14                 }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+
+# map_logic_to_int default is map{true=>1, false=>0}
+assert{Instance := map_logic_to_int{Value:=map{false=>0, true=>1               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # same content, different order
+
+# map_string_to_int default is map{"key"=>42}
+assert{Instance := map_string_to_int{Value:=map{"a"=>1, "key"=>42              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+
+# Multi-entry maps with various orderings (UnversionedBinary)
+assert{Instance := map_int_to_int{Value:=map{3=>30, 1=>10, 2=>20               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_float{Value:=map{3=>3.0, 1=>1.0, 2=>2.0          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_int_to_string{Value:=map{3=>"c", 1=>"a", 2=>"b"         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_char_to_int{Value:=map{'z'=>26, 'm'=>13, 'a'=>1         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# Nested maps with multiple entries (UnversionedBinary)
+assert{Instance := map_int_to_map_int_to_int{Value:=map{2=>map{20=>200, 21=>210}, 1=>map{10=>100, 11=>110}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# Maps to arrays with multiple entries (UnversionedBinary)
+assert{Instance := map_int_to_array_of_int{Value:=map{3=>array{30}, 1=>array{10}, 2=>array{20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# Maps to structs with multiple entries (UnversionedBinary)
+assert{Instance := map_int_to_struct{Value:=map{3=>test_struct{A:=30}, 1=>test_struct{A:=10}, 2=>test_struct{A:=20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct, ?Mode:=serialization_mode.UnversionedBinary); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# ============================================================================
+# Delta serialization order change tests (Text)
+# These tests verify that delta serialization correctly preserves key-value
+# associations even when the serialization order may differ from the source.
+# ============================================================================
+
+# map_int_to_logic default is map{1=>true}
+assert{Instance := map_int_to_logic{Value:=map{0=>false, 1=>true               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_logic{Value:=map{0=>true, 1=>true, 2=>false      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_logic, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # keys around default
+
+# map_int_to_int default is map{42=>100}
+assert{Instance := map_int_to_int{Value:=map{1=>1, 42=>100                     }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+assert{Instance := map_int_to_int{Value:=map{1=>1, 42=>100, 99=>99             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # keys around default
+
+# map_int_to_string default is map{1=>"hello"}
+assert{Instance := map_int_to_string{Value:=map{0=>"zero", 1=>"hello"          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+
+# map_int_to_float default is map{1=>3.14}
+assert{Instance := map_int_to_float{Value:=map{0=>0.0, 1=>3.14                 }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+
+# map_logic_to_int default is map{true=>1, false=>0}
+assert{Instance := map_logic_to_int{Value:=map{false=>0, true=>1               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_logic_to_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # same content, different order
+
+# map_string_to_int default is map{"key"=>42}
+assert{Instance := map_string_to_int{Value:=map{"a"=>1, "key"=>42              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_string_to_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}  # add key before default
+
+# Multi-entry maps with various orderings (Text)
+assert{Instance := map_int_to_int{Value:=map{3=>30, 1=>10, 2=>20               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := map_int_to_float{Value:=map{3=>3.0, 1=>1.0, 2=>2.0          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_float, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_int_to_string{Value:=map{3=>"c", 1=>"a", 2=>"b"         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+assert{Instance := map_char_to_int{Value:=map{'z'=>26, 'm'=>13, 'a'=>1         }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_char_to_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# Nested maps with multiple entries (Text)
+assert{Instance := map_int_to_map_int_to_int{Value:=map{2=>map{20=>200, 21=>210}, 1=>map{10=>100, 11=>110}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_map_int_to_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# Maps to arrays with multiple entries (Text)
+assert{Instance := map_int_to_array_of_int{Value:=map{3=>array{30}, 1=>array{10}, 2=>array{20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_array_of_int, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# Maps to structs with multiple entries (Text)
+assert{Instance := map_int_to_struct{Value:=map{3=>test_struct{A:=30}, 1=>test_struct{A:=10}, 2=>test_struct{A:=20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_struct, ?Mode:=serialization_mode.Text); MapsEqualUnordered[RoundtrippedInstance.Value, Instance.Value]}
+
+# ============================================================================
+# Tests of UE's ConvertFromType functionality to convert between compatible types on load.
+# This behavior should not be visible to Verse users as the backward compatibility constraints should
+# prevent them from making changes to incompatible types.
+# ============================================================================
+
+# Additional classes for conversion tests
+map_char_to_char := class(serializable_class):
+    Value:[char]char=map{'a'=>'A'}
+
+<# These tests are just broken right now: they either assert or deserialize the default value.
+bp_vm_only{
+# [char]int --> [int]int (key conversion)
+assert{Instance := map_char_to_int{Value:=map{                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{}}
+assert{Instance := map_char_to_int{Value:=map{'a'=>1          }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0x61=>1}}
+assert{Instance := map_char_to_int{Value:=map{'a'=>1, 'b'=>2  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0x61=>1, 0x62=>2}}
+assert{Instance := map_char_to_int{Value:=map{0o00=>0, 0off=>255}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0=>0, -1=>255}} # 0xff sign extends to -1
+
+# [char]string --> [int]string (key conversion)
+assert{Instance := map_char_to_string{Value:=map{             }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = map{}}
+assert{Instance := map_char_to_string{Value:=map{'x'=>"x-ray" }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_string); RoundtrippedInstance.Value = map{0x78=>"x-ray"}}
+
+# [logic]int --> [int]int (key conversion - logic to int)
+assert{Instance := map_logic_to_int{Value:=map{               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{}}
+assert{Instance := map_logic_to_int{Value:=map{false=>0       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0=>0}}
+assert{Instance := map_logic_to_int{Value:=map{true=>1        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{1=>1}}
+assert{Instance := map_logic_to_int{Value:=map{true=>1, false=>0}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{1=>1, 0=>0}}
+
+# [int]logic --> [int]int (value conversion)
+assert{Instance := map_int_to_logic{Value:=map{               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{}}
+assert{Instance := map_int_to_logic{Value:=map{0=>false       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0=>0}}
+assert{Instance := map_int_to_logic{Value:=map{1=>true        }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{1=>1}}
+assert{Instance := map_int_to_logic{Value:=map{0=>false, 1=>true}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0=>0, 1=>1}}
+
+# [char]char --> [int]int (both key and value conversion)
+assert{Instance := map_char_to_char{Value:=map{               }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{}}
+assert{Instance := map_char_to_char{Value:=map{'a'=>'A'       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0x61=>0x41}}
+assert{Instance := map_char_to_char{Value:=map{'a'=>'A', 'b'=>'B'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, map_int_to_int); RoundtrippedInstance.Value = map{0x61=>0x41, 0x62=>0x42}}
+} #bp_vm_only
+#>
+
+# ============================================================================
+# Tests of deserializing data serialized by old versions.
+# ============================================================================
+
+# Helper functions to generate test data - run these and copy the output to create tests.
+# The output includes the expected value and the serialized data.
+DumpSerializedMapIntToInt(Value:[int]int):void=
+    Instance := map_int_to_int{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingMapIntToInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingMapIntToInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingMapIntToInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedMapStringToInt(Value:[string]int):void=
+    Instance := map_string_to_int{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingMapStringToInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingMapStringToInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingMapStringToInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedMapIntToString(Value:[int]string):void=
+    Instance := map_int_to_string{Value:=Value}
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingMapIntToString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingMapIntToString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingMapIntToString[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+# Uncomment to generate test data:
+<#>assert:
+    DumpSerializedMapIntToInt(map{})
+    DumpSerializedMapIntToInt(map{0=>0})
+    DumpSerializedMapIntToInt(map{1=>100})
+    DumpSerializedMapIntToInt(map{-1=>-100})
+    DumpSerializedMapIntToInt(map{1=>10, 2=>20, 3=>30})
+    DumpSerializedMapIntToInt(map{0x7fffffffffffffff=>-1})
+
+<#>assert:
+    DumpSerializedMapStringToInt(map{})
+    DumpSerializedMapStringToInt(map{"key"=>42})
+    DumpSerializedMapStringToInt(map{"a"=>1, "b"=>2})
+
+<#>assert:
+    DumpSerializedMapIntToString(map{})
+    DumpSerializedMapIntToString(map{1=>"one"})
+    DumpSerializedMapIntToString(map{1=>"hello", 2=>"world"})
+
+# Test helper for deserializing old map data
+TestDeserializingMapIntToInt(ExpectedValue:[int]int, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, map_int_to_int)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected map_int_to_int\{Value:={DebugToString(ExpectedValue)}\}, but got map_int_to_int\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingMapStringToInt(ExpectedValue:[string]int, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, map_string_to_int)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected map_string_to_int\{Value:={DebugToString(ExpectedValue)}\}, but got map_string_to_int\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+TestDeserializingMapIntToString(ExpectedValue:[int]string, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, map_int_to_string)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected map_int_to_string\{Value:={DebugToString(ExpectedValue)}\}, but got map_int_to_string\{Value:={DebugToString(DeserializedInstance.Value)}\}")
+        false?
+
+bp_vm_only{
+assert{TestDeserializingMapIntToInt[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o10}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t42\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": []\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToInt[map{0 => 0}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00} {0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{0 => 0}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{0 => 0}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t42\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 0,\r\n\t\t\t\t\t\t\t\t\t\"Value\": 0\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToInt[map{1 => 100}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00} {0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}d{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{1 => 100}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}d{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{1 => 100}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t42\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 1,\r\n\t\t\t\t\t\t\t\t\t\"Value\": 100\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToInt[map{-1 => -100}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00} {0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o9c}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{-1 => -100}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o9c}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{-1 => -100}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t42\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": -1,\r\n\t\t\t\t\t\t\t\t\t\"Value\": -100\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToInt[map{1 => 10, 2 => 20, 3 => 30}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}@{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}\n{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o1e}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{1 => 10, 2 => 20, 3 => 30}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}\n{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o1e}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{1 => 10, 2 => 20, 3 => 30}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t42\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 1,\r\n\t\t\t\t\t\t\t\t\t\"Value\": 10\r\n\t\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 2,\r\n\t\t\t\t\t\t\t\t\t\"Value\": 20\r\n\t\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 3,\r\n\t\t\t\t\t\t\t\t\t\"Value\": 30\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToInt[map{9223372036854775807 => -1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00} {0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{9223372036854775807 => -1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}*{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToInt[map{9223372036854775807 => -1}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t42\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 9223372036854775807,\r\n\t\t\t\t\t\t\t\t\t\"Value\": -1\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingMapStringToInt[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o0f}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}key{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapStringToInt[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}key{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapStringToInt[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(VerseStringProperty,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Data\": \"Base64:AwAAAGtleQ==\"\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": []\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapStringToInt[map{"key" => 42}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapStringToInt[map{"key" => 42}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapStringToInt[map{"key" => 42}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(VerseStringProperty,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [],\r\n\t\t\t\t\t\t\t\"Entries\": []\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapStringToInt[map{"a" => 1, "b" => 2}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}){0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}key{0o02}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}a{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}b{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapStringToInt[map{"a" => 1, "b" => 2}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}key{0o02}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}a{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}b{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapStringToInt[map{"a" => 1, "b" => 2}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(VerseStringProperty,Int64Property)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Data\": \"Base64:AwAAAGtleQ==\"\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": \{\r\n\t\t\t\t\t\t\t\t\t\t\"Data\": \"Base64:AQAAAGE=\"\r\n\t\t\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\t\t\"Value\": 1\r\n\t\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": \{\r\n\t\t\t\t\t\t\t\t\t\t\"Data\": \"Base64:AQAAAGI=\"\r\n\t\t\t\t\t\t\t\t\t\},\r\n\t\t\t\t\t\t\t\t\t\"Value\": 2\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+assert{TestDeserializingMapIntToString[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o10}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToString[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToString[map{}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [\r\n\t\t\t\t\t\t\t\t1\r\n\t\t\t\t\t\t\t],\r\n\t\t\t\t\t\t\t\"Entries\": []\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToString[map{1 => "one"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o17}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}one{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToString[map{1 => "one"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}one{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToString[map{1 => "one"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 1,\r\n\t\t\t\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\t\t\t\"Data\": \"Base64:AwAAAG9uZQ==\"\r\n\t\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingMapIntToString[map{1 => "hello", 2 => "world"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.VersionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0c}{0o00}{0o00}{0o00}MapProperty{0o00}{0o02}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o14}{0o00}{0o00}{0o00}VerseStringProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}world{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToString[map{1 => "hello", 2 => "world"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.UnversionedBinary, EnableDeltaSerialization := false, Imports := (), Data := "{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o03}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o02}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}world{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingMapIntToString[map{1 => "hello", 2 => "world"}, serialized_data{Version := serialization_version{UEVersion := 1018, CustomSerializationVersions := ()}, Mode := serialization_mode.Text, EnableDeltaSerialization := false, Imports := (), Data := "\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"__SerializationControlExtensions\": 0,\r\n\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\t\"__Type\": \"MapProperty(Int64Property,VerseStringProperty)\",\r\n\t\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\t\"KeysToRemove\": [],\r\n\t\t\t\t\t\t\t\"Entries\": [\r\n\t\t\t\t\t\t\t\t\{\r\n\t\t\t\t\t\t\t\t\t\"Key\": 2,\r\n\t\t\t\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\t\t\t\"Data\": \"Base64:BQAAAHdvcmxk\"\r\n\t\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t\t\}\r\n\t\t\t\t\t\t\t]\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+}

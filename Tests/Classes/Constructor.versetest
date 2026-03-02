@@ -195,7 +195,7 @@ constructor_invocation := module:
     class1<public> := class:
         Property1<public>:int
     MakeClass1<public><constructor>(Arg:int) := class1:
-        Property1 := 1
+        Property1 := Arg
     class2<public> := class(class1):
         Property2<public>:int
     MakeClass2<public><constructor>(Arg1:int, Arg2:int) := class2:
@@ -222,6 +222,39 @@ assert:
     F := constructor_invocation.MakeClass1
     X := F(1)
     X.Property1 = 1
+
+# Local variable within the capture scope of a delegating constructor call, when the scope does not become a closure:
+assert:
+    X := constructor_invocation.class2:
+        constructor_invocation.MakeClass2<constructor>(Temp := 3, Temp + 5)
+    X.Property1 = 3
+    X.Property2 = 8
+
+# Delegating constructor call nested within another delegating constructor call, when neither scope becomes a closure:
+assert:
+    X := constructor_invocation.class2:
+        constructor_invocation.MakeClass2<constructor>(
+            Temp := 3,
+            constructor_invocation.class1{ constructor_invocation.MakeClass1<constructor>(Temp + 5) }.Property1)
+    X.Property1 = 3
+    X.Property2 = 8
+
+# Delegating constructor call nested within another delegating constructor call, when the outer scope does not become a closure:
+assert:
+    X := constructor_invocation.class2:
+        constructor_invocation.MakeClass2<constructor>(
+            Temp := 3,
+            constructor_invocation.class2{ Property2 := 13, constructor_invocation.MakeClass1<constructor>(Temp + 5) }.Property1)
+    X.Property1 = 3
+    X.Property2 = 8
+
+# Delegating constructor call nested within another delegating constructor call, when both scopes become closures:
+assert:
+    X := constructor_invocation.class2:
+        Property2 := 13
+        constructor_invocation.MakeClass1<constructor>(
+            constructor_invocation.class2{ Property2 := 21, let{ Temp := 3 }, constructor_invocation.MakeClass1<constructor>(Temp + 5) }.Property1)
+    X.Property1 = 8
 
 sub_before_sup := module:
     class2<public> := class(class1):
@@ -368,8 +401,7 @@ ForwardingConstructorsSemantics := module:
         A := Bar
         MakeC2a<constructor>() # This calls to a constructor of the same class, so it will just execute.
 
-# NOTE: New VM behaviour is correct here - BPVM is wrong.
-verse_vm_only{
+# NOTE: Lenient behaviour is correct here - strict/BPVM is wrong.
 assert:
     O:= ForwardingConstructorsSemantics.MakeC2(20)
     O.A = 20
@@ -378,20 +410,8 @@ assert:
     O.D = 4
     O.E = 10
     O.F = 6
-    CoroUtils.GetEventLogString() = "MakeC2 MakeC2a c2 MakeC1 c1 "
-}
-
-bp_vm_only{
-assert:
-    O:= ForwardingConstructorsSemantics.MakeC2(20)
-    O.A = 20
-    O.B = 30
-    O.C = 41
-    O.D = 4
-    O.E = 10
-    O.F = 6
-    CoroUtils.GetEventLogString() = "MakeC2 MakeC2a MakeC1 c1 c2 "
-}
+    strict_only{ CoroUtils.GetEventLogString() = "MakeC2 MakeC2a MakeC1 c1 c2 " }
+    lenient_only{ CoroUtils.GetEventLogString() = "MakeC2 MakeC2a c2 MakeC1 c1 " }
 
 
 parametric_constructor := module:
@@ -553,21 +573,12 @@ class_block_order_of_evaluation := module:
         block:
             CoroUtils.LogEvent("MakeClass1 ")
 
-bp_vm_only{
 assert:
     X := class_block_order_of_evaluation.class3:
         block:
             CoroUtils.LogEvent("Before ")
-    CoroUtils.GetEventLogString() = "Before class1 class2 class3 "
-}
-
-verse_vm_only{
-assert:
-    X := class_block_order_of_evaluation.class3:
-        block:
-            CoroUtils.LogEvent("Before ")
-    CoroUtils.GetEventLogString() = "Before class3 class2 class1 "
-}
+    strict_only{ CoroUtils.GetEventLogString() = "Before class1 class2 class3 " }
+    lenient_only{ CoroUtils.GetEventLogString() = "Before class3 class2 class1 " }
 
 TestMixingNamedAnUnnamedArgs := module:
     class1<public> := class { X<public>:int = 42, Y<public>:int = 84}

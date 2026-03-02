@@ -30,11 +30,11 @@ assert_semantic_error(3502):
     Main()<decides>:void =
         F(1, int) = 1
 
-assert_valid:
+assert_semantic_error(3502):
     F(t:type, X:t)<computes>:t = X
     Int()<computes> := F(type, int)
 
-assert_semantic_error(3509, 3510):
+assert_semantic_error(3502, 3509, 3510):
     F(t:type, X:t)<computes>:t = X
     Int()<computes> := F(type, int)
     G()<computes>:int = F(Int(), 1)

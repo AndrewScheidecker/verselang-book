@@ -47,20 +47,22 @@ assert_valid:
 
 # Check you can't implement epic internal interfaces from user code.
 assert_semantic_error(3593):
-    vpackage(Root,/Verse.org/Interface/Root,?Scope:=InternalAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
+    vpackage(Root,/Verse.org/Interface/Root,?Scope:=PublicAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
     vpackage(UserCode,/NotVerse.org/Interface/User,?Dependencies:=(Root)):
         snippet:
             using { /Verse.org/Interface/Root/M0 }
             my_class := class(my_interface):
                 Foo<override>():int = 1
 
-# Check you can use epic_internal interfaces from User code.
+# Check you can use a public interface, even if it has an `epic_internal` constructor, from user code.
 assert_valid:
-    vpackage(Root,/Verse.org/Interface/Root,?Scope:=InternalAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
+    vpackage(Root,/Verse.org/Interface/Root,?Scope:=PublicAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
     vpackage(UserCode, /NotVerse.org/Interface/User,?Dependencies:=(Root)):
         snippet:
             using { /Verse.org/Interface/Root/M0 }
             Bar(X:my_interface):int = X.Foo()
+
+
 
 
 assert_valid:

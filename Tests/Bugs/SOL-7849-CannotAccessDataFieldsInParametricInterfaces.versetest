@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+i(T:type) := interface:
+    Value:?T = false
+    Method(X:T):T= X
+i() := i(void)
+c := class(i()) {} 
+c_int := class(i(int)) {}
+
+assert:
+    C := c{}
+    C.Method(void)
+    # C.Value = false      # Unknown member `Value` in `c`.
+    CInt := c_int{}
+    CInt.Method(10) = 10
+    # CInt.Value = false   # Unknown member `Value` in `c_int`.

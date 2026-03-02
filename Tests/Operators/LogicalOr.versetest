@@ -148,3 +148,32 @@ assert_semantic_error(3513):
 assert_semantic_error(3512):
     f1()<transacts><decides>:int = { 0 }
     f2():int = { f1[] or f1[] }
+
+# `or` must decay the left-hand side and right-hand side.
+Decay := module:
+    struct1 := struct<concrete> {}
+    (Arg:struct1).F():struct1 = Arg
+    Main<public>():void = 
+        X := struct1{}
+        var Y:struct1 = struct1{}
+        (false? and X or Y).F()
+
+assert:
+    Decay.Main()
+
+# `false` type inference
+assert:
+    X:?int = (false?; false) or option{1}
+    X? = 1
+
+assert:
+    X:?int = (true?; false) or option{1}
+    not X?
+
+assert:
+    X:?int = (false?; option{1}) or false
+    not X?
+
+assert:
+    X:?int = (true?; option{1}) or false
+    X? = 1

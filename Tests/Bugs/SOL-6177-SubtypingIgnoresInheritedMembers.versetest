@@ -1,0 +1,40 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+<# Disabled pending fix for FORT-1017607
+assert_semantic_error(3510):
+    covariant_interface(t:type) := interface{Field:t}
+    F(X:covariant_interface(int)) : covariant_interface(float) = X
+
+assert_semantic_error(3510):
+    covariant_interface(t:type) := interface{Field:t}
+    interface_inheriting_covariant_interface(t:type) := interface(covariant_interface(t)) {}
+    F(X:interface_inheriting_covariant_interface(int)) : interface_inheriting_covariant_interface(float) = X
+    
+assert_semantic_error(3510):
+    covariant_interface(t:type) := interface{Field:t}
+    class_inheriting_covariant_interface(t:type) := class(covariant_interface(t)) {}
+    F(X:class_inheriting_covariant_interface(int)) : class_inheriting_covariant_interface(float) = X
+
+assert_semantic_error(3510):
+    covariant_class(t:type) := class{Field:t}
+    class_inheriting_covariant_class(t:type) := class(covariant_class(t)) {}
+    F(X:class_inheriting_covariant_class(int)) : class_inheriting_covariant_class(float) = X
+
+assert_semantic_error(3509):
+    covariant_interface(t:type) := interface{Field:t}
+    interface_inheriting_covariant_interface(t:type) := interface(covariant_interface(t)) {}
+    F0(X:interface_inheriting_covariant_interface(float)) : void = {}
+    F1(X:interface_inheriting_covariant_interface(int)) : void = F0(X)
+    
+assert_semantic_error(3509):
+    covariant_interface(t:type) := interface{Field:t}
+    class_inheriting_covariant_interface(t:type) := class(covariant_interface(t)) {}
+    F0(X:class_inheriting_covariant_interface(float)) : void = {}
+    F1(X:class_inheriting_covariant_interface(int)) : void = F0(X)
+
+assert_semantic_error(3509):
+    covariant_class(t:type) := class{Field:t}
+    class_inheriting_covariant_class(t:type) := class(covariant_class(t)) {}
+    F0(X:class_inheriting_covariant_class(float)) : void = {}
+    F1(X:class_inheriting_covariant_class(int)) : void = F0(X)
+#>

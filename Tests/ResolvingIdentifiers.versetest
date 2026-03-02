@@ -1,0 +1,37 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Make sure that we do not attempt to resolve definitions that are in internal API/user packages from public user/API packages.
+assert_valid:
+    vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI):
+        snippet:
+            Foop<public> := module:
+                Bar<public>:int = 24
+
+    vpackage(P1, /Verse.org/B, ?Scope:=PublicAPI):
+        snippet:
+            Foop<public> := module:
+                Bar<public>:int = 42
+    
+    vpackage(P2, /Verse.org/C, ?Dependencies:=(P0, P1), ?Scope:=PublicUser):
+        snippet:
+            using {/Verse.org/A}
+            using {/Verse.org/B}
+            D := module:
+                Baz:int = Foop.Bar
+
+# Ensure that if there happen to be multi-part modules that specify the Verse scope inconsistently,
+# that we can still resolve identifiers appropriately.
+assert_valid:
+    vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI):
+        snippet{}
+
+    vpackage(P1, /Verse.org/A, ?Scope:=PublicAPI):
+        snippet:
+            Foop<public> := module:
+                Bar<public>:int = 42
+    
+    vpackage(P2, /Verse.org/C, ?Dependencies:=(P0, P1), ?Scope:=PublicUser):
+        snippet:
+            using {/Verse.org/A}
+            D := module:
+                Baz:int = Foop.Bar
