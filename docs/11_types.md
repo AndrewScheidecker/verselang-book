@@ -215,6 +215,66 @@ container:
 - Because `any` is not comparable, it cannot be used as a map key type
 - Because `any` is not castable, it is a sticky type.
 
+### Generic Functions and Type Preservation
+
+Generic functions with `where t:type` constraints behave fundamentally differently from functions that accept `any`. Understanding this difference is crucial for writing type-safe code.
+
+When you pass a value to a function with parameter type `any`, the type information is lost:
+
+<!--versetest-->
+<!-- 53 -->
+```verse
+AcceptAny(X:any):any = X
+
+MyMap:[int]string = map{1 => "one"}
+Result := AcceptAny(MyMap)  # Result has type any - type info lost
+```
+
+In contrast, generic functions preserve exact types:
+
+<!--versetest-->
+<!-- 54 -->
+```verse
+Identity(X:t where t:type):t = X
+
+MyMap:[int]string = map{1 => "one"}
+Result := Identity(MyMap)  # Result has type [int]string - type preserved
+MyMap = Result  # Succeeds - same type
+```
+
+This preservation extends to all container types, including arrays, maps, tuples, and structs. The generic type parameter captures the complete type, including:
+
+- Map key and value types
+- Array element types
+- Tuple component types
+- Struct field types
+
+**Practical implications:**
+
+Container types passed through generic functions maintain their structure completely:
+
+<!--versetest-->
+<!-- 55 -->
+```verse
+Identity(X:t where t:type):t = X
+
+# All key types are preserved
+IntMap:[int]int = map{1 => 2, 3 => 4}
+IntMap = Identity(IntMap)  # Same type
+
+FloatMap:[float]string = map{1.0 => "one", 2.5 => "two"}
+FloatMap = Identity(FloatMap)  # Same type
+
+TupleMap:[tuple(int, string)]int = map{(1, "a") => 100}
+TupleMap = Identity(TupleMap)  # Same type
+
+# Iteration and equality work as expected
+for (Key->Value : IntMap):
+    Identity(IntMap)[Key] = Value  # All lookups succeed
+```
+
+This makes generic functions the preferred approach when you need to write reusable code that works with containers while maintaining type safety.
+
 ## Class and Interface Casting
 
 Verse provides two distinct casting mechanisms for classes and

@@ -1416,9 +1416,32 @@ Identity(42)        # t inferred as int, returns 42
 Identity("hello")   # t inferred as string, returns "hello"
 ```
 
-The `where t:type` clause declares `t` as a type parameter with the constraint `type`, 
-meaning it can be any Verse type. 
+The `where t:type` clause declares `t` as a type parameter with the constraint `type`,
+meaning it can be any Verse type.
 The function signature `(X:t):t` means "takes a value of type `t` and returns a value of that same type `t`."
+
+The generic type parameter `t` captures the complete type information, not just the top-level type. This means containers passed to generic functions preserve their internal structure:
+
+<!--versetest-->
+<!-- 901-->
+```verse
+# The Identity function preserves exact container types
+Identity(X:t where t:type):t = X
+
+# Maps maintain their key and value types
+IntToString:[int]string = map{1 => "one"}
+Result1 := Identity(IntToString)  # Result1: [int]string
+
+# Arrays maintain element types
+Numbers:[]int = array{1, 2, 3}
+Result2 := Identity(Numbers)  # Result2: []int
+
+# Even nested containers preserve structure
+NestedMap:[int][]string = map{1 => array{"a", "b"}}
+Result3 := Identity(NestedMap)  # Result3: [int][]string
+```
+
+This is fundamentally different from using `any`, which would erase type information.
 
 <!--NoCompile-->
 <!-- 90-->

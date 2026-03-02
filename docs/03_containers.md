@@ -943,6 +943,91 @@ Not all types can be used as map keys. A type must be comparable—meaning value
 - `tuple(t0, t1, ...)` where all elements are comparable - tuples of comparable types
 - `struct` types where all fields are comparable
 
+### Map Key Type Examples
+
+The following examples demonstrate various comparable types used as map keys:
+
+**Tuples as keys:**
+
+<!--versetest-->
+<!-- 71 -->
+```verse
+# Coordinate system using tuple keys
+Grid:[tuple(int, int)]string = map{
+    (0, 0) => "origin",
+    (1, 0) => "east",
+    (0, 1) => "north",
+    (-1, 0) => "west"
+}
+```
+
+**Structs as keys:**
+
+<!--versetest-->
+<!-- 72 -->
+```verse
+point := struct{X:int, Y:int}
+Landmarks:[point]string = map{
+    point{X := 0, Y := 0} => "origin",
+    point{X := 10, Y := 20} => "tower"
+}
+```
+
+**Enums as keys:**
+
+<!--versetest-->
+<!-- 73 -->
+```verse
+direction := enum{North, South, East, West}
+Instructions:[direction]string = map{
+    direction.North => "Go up",
+    direction.South => "Go down",
+    direction.East => "Turn right",
+    direction.West => "Turn left"
+}
+```
+
+**Rational numbers as keys:**
+
+<!--versetest-->
+<!-- 74 -->
+```verse
+Fractions:[rational]string = map{
+    1/2 => "half",
+    1/3 => "third",
+    2/3 => "two thirds",
+    1/1 => "whole"
+}
+```
+
+Equivalent rational numbers (like `1/1` and `2/2`) are treated as the same key.
+
+**Unicode characters as keys:**
+
+<!--versetest-->
+<!-- 75 -->
+```verse
+Translations:[char32]string = map{
+    '😀' => "grinning face",
+    '你' => "you (Chinese)",
+    '好' => "good (Chinese)"
+}
+```
+
+**Special float values:**
+
+Float special values like `NaN` and `Inf` can be used as map keys:
+
+<!--versetest-->
+<!-- 76 -->
+```verse
+SpecialFloats:[float]string = map{
+    Inf => "positive infinity",
+    -Inf => "negative infinity",
+    0.0 => "zero"
+}
+```
+
 **Types that cannot be used as map keys:**
 
 - `false` - the empty type
