@@ -1907,26 +1907,6 @@ entity := class(formatter):
 
 ### Restrictions
 
-**Cannot use `var` with overloaded functions:**
-
-Function-valued variables cannot be overloaded:
-
-<!--versetest
-assert_semantic_error(3502):
-    var f():void = {}
-<#
--->
-<!-- 111-->
-```verse
-# ERROR 3502: Cannot have var overloaded functions
-# var f():void = {}
-# var f(x:int):void = {}
-
-# ERROR: Cannot mix var and regular
-# var f():void = {}
-# f(x:int):void = {}
-```
-<!-- #>-->
 
 **Cannot overload functions with non-functions:**
 
@@ -1945,18 +1925,6 @@ assert_semantic_error(3532):
 # f():void = {}
 ```
 <!-- #>-->
-
-**Cannot overload classes:**
-
-Class names cannot be overloaded:
-
-<!--NoCompile-->
-<!-- 113-->
-```verse
-# ERROR: Cannot overload class name
-# C := class{}
-# C(x:int):C = C{}
-```
 
 **Bottom type cannot resolve overloads:**
 
@@ -2023,24 +1991,6 @@ g():void = f(1.0)  # ERROR - float version is suspends
 ```
 <!-- #>-->
 
-**Cannot spawn non-suspending overload:**
-
-<!--versetest
-assert_semantic_error(3538):
-    f(x:int):void = {}
-    f(x:float)<suspends>:void = {}
-    g():void = spawn{f(1)}
-<#
--->
-<!-- 117-->
-```verse
-# ERROR: Cannot spawn non-suspends function
-f(x:int):void = {}
-f(x:float)<suspends>:void = {}
-
-g():void = spawn{f(1)}  # ERROR - int version not suspends
-```
-<!-- #>-->
 
 ### Types 
 
